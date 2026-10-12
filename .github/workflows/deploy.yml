@@ -1,0 +1,167 @@
+name: Publish static website to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Prepare static files and fix directory routes
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from html import escape
+          from pathlib import Path
+          from shutil import copy2, copytree, ignore_patterns, rmtree
+          from urllib.parse import quote
+
+          root = Path.cwd()
+          site = root / "_site"
+
+          if site.exists():
+              rmtree(site)
+          site.mkdir(parents=True)
+
+          # Copy the repository as a static site, excluding Git metadata and workflow files.
+          for item in root.iterdir():
+              if item.name in {".git", ".github", "_site", "node_modules"} or item.name.startswith("."):
+                  continue
+              target = site / item.name
+              if item.is_dir():
+                  copytree(
+                      item,
+                      target,
+                      ignore=ignore_patterns(".git", ".github", "_site", "node_modules", ".*"),
+                  )
+              else:
+                  copy2(item, target)
+
+          def html_files(folder):
+              return sorted(
+                  (p for p in folder.iterdir()
+                   if p.is_file() and p.suffix.lower() in {".html", ".htm"}
+                   and p.name.lower() != "index.html"),
+                  key=lambda p: p.name.lower(),
+              )
+
+          def page_title(file):
+              # Use a readable title based on the file name; no extra dependencies needed.
+              name = file.stem.replace("_", " ").replace("-", " ").strip()
+              return name.title() or file.name
+
+          def make_listing(title, entries):
+              cards = []
+              for label, href, description in entries:
+                  cards.append(
+                      '<a class="card" href="' + escape(href, quote=True) + '">'
+                      '<span class="card-title">' + escape(label) + '</span>'
+                      '<span class="card-description">' + escape(description) + '</span>'
+                      '<span class="arrow">Abrir proyecto ↗</span></a>'
+                  )
+              return '''<!doctype html>
+          <html lang="es">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <meta name="theme-color" content="#6c5ce7">
+            <title>''' + escape(title) + '''</title>
+            <style>
+              :root{color-scheme:light;--ink:#25213b;--muted:#706b86;--purple:#6c5ce7;--paper:#fffdf6}
+              *{box-sizing:border-box}body{margin:0;min-height:100vh;font-family:ui-rounded,"Trebuchet MS",system-ui,sans-serif;color:var(--ink);background:radial-gradient(circle at 10% 8%,#ffe7a5 0 8%,transparent 9%),radial-gradient(circle at 90% 15%,#c9f7e7 0 10%,transparent 11%),linear-gradient(140deg,#f6f0ff,#fafffd 55%,#fff5df)}
+              main{width:min(980px,92%);margin:0 auto;padding:64px 0 48px}.tag{display:inline-block;padding:7px 13px;border:2px solid #25213b;border-radius:999px;background:#fff;font-size:.8rem;font-weight:800;box-shadow:3px 3px 0 #25213b}
+              h1{font-size:clamp(2.4rem,7vw,4.8rem);letter-spacing:-.055em;line-height:1;margin:22px 0 14px}p{color:var(--muted);line-height:1.65;max-width:650px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-top:32px}
+              .card{display:flex;flex-direction:column;gap:12px;min-height:174px;padding:22px;text-decoration:none;color:inherit;background:var(--paper);border:2px solid var(--ink);border-radius:22px;box-shadow:5px 5px 0 var(--ink);transition:transform .15s,box-shadow .15s}.card:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 var(--ink)}.card-title{font-weight:900;font-size:1.25rem}.card-description{color:var(--muted);font-size:.94rem;line-height:1.5}.arrow{margin-top:auto;color:var(--purple);font-weight:900}footer{margin-top:38px;font-size:.85rem;color:var(--muted)}
+              </style>
+          </head>
+          <body><main><span class="tag">✦ PROYECTOS INTERACTIVOS</span><h1>Elige tu juego</h1><p>Una colección de proyectos web. Selecciona una tarjeta para abrir cada experiencia en su propia ruta.</p><section class="grid">''' + ''.join(cards) + '''</section><footer>Hecho con HTML, CSS y JavaScript · Publicado con GitHub Pages</footer></main></body></html>'''
+
+          # Give each directory containing HTML a working /directory/ route.
+          directories = sorted(
+              (p for p in site.rglob("*") if p.is_dir()),
+              key=lambda p: len(p.parts),
+              reverse=True,
+          )
+          for folder in directories:
+              index = folder / "index.html"
+              if index.exists():
+                  continue
+
+              files = html_files(folder)
+              if len(files) == 1:
+                  # Alias the only HTML file as index.html so /folder/ works.
+                  copy2(files[0], index)
+              elif len(files) > 1:
+                  entries = [
+                      (page_title(file), "./" + quote(file.name), "Abrir " + file.name)
+                      for file in files
+                  ]
+                  index.write_text(make_listing("Proyectos · " + folder.name, entries), encoding="utf-8")
+              else:
+                  # If this folder contains child projects, make it a useful directory landing page.
+                  children = [p for p in sorted(folder.iterdir(), key=lambda p: p.name.lower())
+                              if p.is_dir() and (p / "index.html").exists()]
+                  if children:
+                      entries = [
+                          (child.name if not child.name.isdigit() else "Versión " + child.name,
+                           "./" + quote(child.name) + "/", "Proyecto web")
+                          for child in children
+                      ]
+                      index.write_text(make_listing("Proyectos · " + folder.name, entries), encoding="utf-8")
+
+          # The repository currently has no root index.html; create a homepage with safe relative routes.
+          root_index = site / "index.html"
+          if not root_index.exists():
+              entries = []
+              for folder in sorted((p for p in site.iterdir() if p.is_dir()), key=lambda p: p.name.lower()):
+                  if (folder / "index.html").exists():
+                      label = "Versión " + folder.name if folder.name.isdigit() else folder.name.replace("-", " ").replace("_", " ").title()
+                      entries.append((label, "./" + quote(folder.name) + "/", "Abrir el proyecto " + folder.name))
+
+              for file in html_files(site):
+                  entries.append((page_title(file), "./" + quote(file.name), "Abrir " + file.name))
+
+              if not entries:
+                  entries.append(("Sitio publicado", "./", "Añade archivos HTML al repositorio para verlos aquí"))
+              root_index.write_text(make_listing("ScratchHTN · Juegos", entries), encoding="utf-8")
+
+          # Prevent Jekyll from ignoring assets or folders whose names start with an underscore.
+          (site / ".nojekyll").write_text("", encoding="utf-8")
+          print("Static site prepared at", site)
+          for index in sorted(site.rglob("index.html")):
+              relative = index.parent.relative_to(site)
+              route = "/" if str(relative) == "." else "/" + relative.as_posix().strip("/") + "/"
+              print("Route:", route)
+          PY
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+          include-hidden-files: true
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

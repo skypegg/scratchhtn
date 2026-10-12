@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chispa reacciona al sonido · estilo Scratch</title>
+<style>
+  :root {
+    --ink: #29264b;
+    --muted: #777493;
+    --purple: #8557ef;
+    --purple-dark: #6039ce;
+    --blue: #3987f6;
+    --yellow: #ffca43;
+    --green: #35bd86;
+    --pink: #ff6c9c;
+    --panel: #ffffff;
+    --bg: #f2f1fb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--ink);
+    font-family: ui-rounded, "Trebuchet MS", system-ui, -apple-system, sans-serif;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(255,202,67,.2), transparent 25rem),
+      radial-gradient(circle at 98% 12%, rgba(133,87,239,.14), transparent 27rem),
+      var(--bg);
+  }
+  button, input { font: inherit; }
+  button { cursor: pointer; }
+  .app { max-width: 1240px; padding: 24px 20px 28px; margin: auto; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .brand-mark { width:48px; height:48px; display:grid; place-items:center; border-radius:16px; background:var(--yellow); box-shadow:0 5px 0 #e6ab22; font-size:27px; transform:rotate(-4deg); }
+  h1 { font-size:clamp(21px, 3vw, 30px); line-height:1.1; margin:0; letter-spacing:-.8px; }
+  .subtitle { font-size:13px; color:var(--muted); margin-top:5px; }
+  .live-pill { display:flex; align-items:center; gap:8px; border:1px solid #e3dff6; background:#fff; padding:9px 13px; border-radius:99px; color:#5b5680; font-size:12px; font-weight:800; white-space:nowrap; }
+  .live-dot { height:8px; width:8px; border-radius:50%; background:#bbb8cf; }
+  .live-pill.listening .live-dot { background:#30bd86; box-shadow:0 0 0 4px rgba(48,189,134,.14); animation:pulse 1.5s infinite; }
+  .workspace { display:grid; grid-template-columns:minmax(245px, .78fr) minmax(0, 1.45fr); gap:18px; align-items:stretch; }
+  .panel { background:var(--panel); border:1px solid #e7e4f5; border-radius:23px; box-shadow:0 12px 34px rgba(56,42,113,.07); overflow:hidden; }
+  .panel-head { display:flex; justify-content:space-between; align-items:center; padding:18px 19px 14px; border-bottom:1px solid #f0eef8; }
+  .panel-title { margin:0; font-size:15px; font-weight:900; letter-spacing:-.2px; }
+  .mini-label { color:#9995b1; font-size:10px; letter-spacing:1.25px; font-weight:900; text-transform:uppercase; }
+  .tabs { display:flex; align-items:center; gap:5px; padding:11px 14px 0; }
+  .tab { border:0; border-radius:9px 9px 0 0; padding:9px 11px; font-size:12px; font-weight:800; color:#8985a7; background:#f8f7fc; }
+  .tab.active { background:#efeaff; color:#6943d2; }
+  .blocks-wrap { padding:15px; }
+  .block { position:relative; margin-bottom:12px; padding:13px 13px 13px 15px; color:#fff; border-radius:9px 13px 13px 9px; box-shadow:0 4px 0 rgba(37,24,95,.12); font-weight:800; font-size:13px; line-height:1.42; overflow:hidden; }
+  .block:before { content:""; position:absolute; top:0; left:0; bottom:0; width:5px; background:rgba(0,0,0,.12); }
+  .block .sub { display:block; margin-top:4px; font-size:11px; font-weight:600; opacity:.9; }
+  .event { background:#ffad35; color:#4e2c05; }
+  .motion { background:#4388ee; }
+  .sound { background:#9a68e9; }
+  .control { background:#f47aa7; }
+  .looks { background:#35b98d; }
+  .block-row { display:flex; align-items:center; flex-wrap:wrap; gap:5px; margin-top:8px; }
+  .slot { display:inline-block; background:rgba(42,24,93,.18); padding:4px 8px; border-radius:7px; min-width:44px; text-align:center; }
+  .block-note { color:#8884a5; font-size:11px; line-height:1.5; margin:14px 2px 4px; }
+  .stage-panel { display:flex; flex-direction:column; }
+  .stage-top { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:18px 20px 13px; }
+  .stage-status { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); font-weight:800; }
+  .status-dot { width:9px; height:9px; border-radius:50%; background:#b8b4ce; }
+  .status-dot.happy { background:#ffb92f; box-shadow:0 0 0 4px rgba(255,185,47,.16); }
+  .stage { position:relative; margin:0 15px; min-height:350px; overflow:hidden; border:5px solid #fff; border-radius:19px; background:linear-gradient(180deg,#9ddcff 0%,#c8f2ff 63%,#dbf8d0 63%,#a6e9a0 100%); box-shadow:inset 0 0 0 1px rgba(46,80,126,.08), 0 5px 14px rgba(63,113,147,.1); }
+  .sun { position:absolute; top:26px; right:34px; width:58px; height:58px; border-radius:50%; background:#ffdf69; box-shadow:0 0 0 12px rgba(255,223,105,.2), 0 0 35px rgba(255,223,105,.4); }
+  .cloud { position:absolute; top:49px; left:38px; width:83px; height:23px; background:rgba(255,255,255,.8); border-radius:40px; }
+  .cloud:before,.cloud:after { content:""; position:absolute; border-radius:50%; background:inherit; }
+  .cloud:before { width:34px;height:34px;left:14px;bottom:3px; }
+  .cloud:after { width:27px;height:27px;left:40px;bottom:1px; }
+  .cloud.two { left:auto; top:107px; right:119px; transform:scale(.68); opacity:.7; }
+  .hill { position:absolute; bottom:-77px; width:350px; height:152px; border-radius:50%; background:#87db8e; }
+  .hill.one { left:-85px; }
+  .hill.two { right:-115px; bottom:-92px; background:#6dd183; }
+  .stage-caption { position:absolute; top:16px; left:15px; z-index:2; padding:7px 10px; border-radius:10px; background:rgba(255,255,255,.78); font-size:11px; font-weight:900; color:#55769a; backdrop-filter:blur(5px); }
+  .speech { position:absolute; left:50%; top:51px; z-index:3; transform:translateX(-50%); min-width:145px; text-align:center; border:2px solid rgba(84,64,142,.12); background:#fff; border-radius:16px; padding:9px 13px; color:#55447c; font-size:13px; font-weight:900; box-shadow:0 4px 0 rgba(77,70,115,.09); transition:transform .2s; }
+  .speech:after { content:""; position:absolute; bottom:-8px; left:calc(50% - 7px); width:12px;height:12px; background:#fff; transform:rotate(45deg); border-right:2px solid rgba(84,64,142,.1); border-bottom:2px solid rgba(84,64,142,.1); }
+  .sprite-holder { position:absolute; z-index:2; left:50%; bottom:32px; transform:translateX(-50%); width:220px; height:240px; display:grid; place-items:center; }
+  .sprite { width:100%; height:100%; overflow:visible; filter:drop-shadow(0 8px 0 rgba(55,103,78,.13)); transform-origin:50% 80%; }
+  .sprite.sleeping { animation:doze 3.2s ease-in-out infinite; }
+  .sprite.happy { animation:boing .55s ease-in-out infinite alternate; }
+  .costume-happy { display:none; }
+  .sprite.happy .costume-sleep { display:none; }
+  .sprite.happy .costume-happy { display:block; }
+  .zzz { animation:floatZ 2s ease-in-out infinite; transform-origin:center; }
+  .zzz.z2 { animation-delay:.65s; }
+  .spark { opacity:0; transform-origin:center; }
+  .sprite.happy .spark { animation:twinkle .8s ease-in-out infinite alternate; }
+  .sprite.happy .spark.s2 { animation-delay:.3s; }
+  .sprite.happy .spark.s3 { animation-delay:.55s; }
+  .stage-bottom { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:13px 20px 18px; }
+  .costume-name { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:900; }
+  .costume-swatch { height:25px; width:25px; display:grid; place-items:center; border-radius:8px; background:#e8e3ff; font-size:13px; }
+  .stage-hint { color:#8d89aa; font-size:11px; text-align:right; }
+  .controls { display:grid; grid-template-columns:1.2fr 1fr; gap:14px; margin-top:18px; }
+  .control-panel { background:#fff; border:1px solid #e7e4f5; border-radius:20px; padding:17px 18px; box-shadow:0 8px 24px rgba(56,42,113,.045); }
+  .control-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:14px; }
+  .control-head h2 { font-size:14px; margin:0; }
+  .button-row { display:flex; flex-wrap:wrap; gap:9px; }
+  .btn { display:inline-flex; justify-content:center; align-items:center; gap:8px; border:0; border-radius:12px; padding:11px 15px; font-size:12px; font-weight:900; transition:transform .12s, filter .12s; }
+  .btn:hover { filter:brightness(1.03); transform:translateY(-1px); }
+  .btn:active { transform:translateY(1px); }
+  .btn.primary { background:var(--purple); color:#fff; box-shadow:0 4px 0 var(--purple-dark); }
+  .btn.primary:disabled { background:#bdb0ed; box-shadow:0 4px 0 #a99adf; cursor:default; }
+  .btn.stop { background:#f0eef8; color:#777190; box-shadow:0 4px 0 #dcd8ea; }
+  .btn.test { background:#fff1c6; color:#78520a; box-shadow:0 4px 0 #efd17a; }
+  .tiny-note { color:#9692ac; font-size:10px; line-height:1.5; margin:12px 1px 0; }
+  .meter-line { display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:10px; }
+  .meter-number { font-size:28px; font-weight:950; letter-spacing:-1px; color:#6e49dd; }
+  .meter-number small { font-size:12px; letter-spacing:0; color:#8d87a7; }
+  .threshold { color:#7e799d; font-size:11px; font-weight:800; }
+  .meter-track { position:relative; height:15px; background:#efedf8; border-radius:50px; overflow:hidden; box-shadow:inset 0 2px 4px rgba(56,42,113,.08); }
+  .meter-fill { height:100%; width:0%; border-radius:50px; background:linear-gradient(90deg,#48c7a3,#ffcf58,#ff6b92); transition:width .1s linear; }
+  .meter-threshold { position:absolute; top:-3px; bottom:-3px; left:41.66%; width:3px; background:#3e3268; border:1px solid #fff; border-radius:6px; z-index:2; }
+  .meter-ends { display:flex; justify-content:space-between; color:#aaa6bf; font-size:9px; margin-top:6px; }
+  .calibration { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:15px; font-size:11px; color:#777291; font-weight:800; }
+  .calibration output { color:#6a43d8; font-weight:950; min-width:49px; text-align:right; }
+  input[type=range] { width:100%; accent-color:var(--purple); margin:9px 0 0; }
+  .slider-caption { display:flex; justify-content:space-between; color:#aaa6bf; font-size:10px; margin-top:2px; }
+  .footnote { padding:15px 3px 0; text-align:center; font-size:10px; color:#9995b2; line-height:1.6; }
+  .footnote strong { color:#797393; }
+  .toast { position:fixed; left:50%; bottom:23px; z-index:10; transform:translate(-50%, 25px); opacity:0; pointer-events:none; padding:12px 17px; border-radius:13px; background:#302b50; color:white; box-shadow:0 10px 30px #27213c33; font-size:12px; font-weight:800; transition:all .25s; max-width:calc(100vw - 28px); text-align:center; }
+  .toast.show { opacity:1; transform:translate(-50%, 0); }
+  @keyframes pulse { 50% { box-shadow:0 0 0 7px rgba(48,189,134,0); } }
+  @keyframes doze { 0%,100% { transform:rotate(-2deg) translateY(2px) scale(.98); } 50% { transform:rotate(2deg) translateY(7px) scale(.97); } }
+  @keyframes boing { from { transform:translateY(1px) rotate(-3deg) scale(1); } to { transform:translateY(-13px) rotate(3deg) scale(1.03); } }
+  @keyframes floatZ { 0% { transform:translate(0,0) scale(.85); opacity:.45; } 100% { transform:translate(8px,-15px) scale(1.12); opacity:1; } }
+  @keyframes twinkle { from { opacity:.35; transform:scale(.7) rotate(-15deg); } to { opacity:1; transform:scale(1.15) rotate(15deg); } }
+  @media (max-width:800px) {
+    .workspace { grid-template-columns:1fr; }
+    .blocks-panel { order:2; }
+    .stage-panel { order:1; }
+    .controls { grid-template-columns:1fr; }
+    .stage { min-height:320px; }
+  }
+  @media (max-width:480px) {
+    .app { padding:16px 12px 22px; }
+    .topbar { align-items:flex-start; }
+    .live-pill { font-size:0; padding:10px; }
+    .live-dot { width:9px; height:9px; }
+    .stage { min-height:290px; margin:0 9px; }
+    .sprite-holder { transform:translateX(-50%) scale(.88); transform-origin:bottom center; }
+    .stage-top { padding-left:13px; padding-right:13px; }
+    .stage-bottom { padding-left:13px; padding-right:13px; }
+    .blocks-wrap { padding:12px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">🐱</div>
+      <div>
+        <h1>Chispa reacciona al sonido</h1>
+        <div class="subtitle">Un mini proyecto inspirado en los bloques de Scratch</div>
+      </div>
+    </div>
+    <div class="live-pill" id="livePill"><span class="live-dot"></span><span id="liveText">MICRÓFONO APAGADO</span></div>
+  </header>
+
+  <main class="workspace">
+    <section class="panel blocks-panel" aria-label="Lógica del personaje">
+      <div class="panel-head">
+        <h2 class="panel-title">Mi código</h2>
+        <span class="mini-label">BLOQUES</span>
+      </div>
+      <div class="tabs" aria-hidden="true">
+        <span class="tab active">Código</span><span class="tab">Disfraces</span><span class="tab">Sonidos</span>
+      </div>
+      <div class="blocks-wrap">
+        <div class="block event">🚩 Al presionar «Iniciar»<span class="sub">Comenzar a escuchar el micrófono</span></div>
+        <div class="block motion">🎙️ por siempre<span class="sub">Leer el volumen del sonido ambiente</span></div>
+        <div class="block sound">🔊 si el nivel supera el umbral
+          <div class="block-row"><span class="slot">50 dB(A)*</span><span>entonces</span></div>
+        </div>
+        <div class="block control">↻ cambiar disfraz a…<div class="block-row"><span class="slot">¡Feliz!</span><span>＋ saltar</span></div></div>
+        <div class="block looks">💤 si vuelve el silencio<div class="block-row"><span class="slot">Dormilón</span><span>＋ mostrar Zzz</span></div></div>
+        <p class="block-note">La lógica es como un programa de Scratch: escucha continuamente, reacciona al ruido y vuelve a dormir después de un momento de silencio.</p>
+      </div>
+    </section>
+
+    <section class="panel stage-panel" aria-label="Escenario del personaje">
+      <div class="stage-top">
+        <h2 class="panel-title">Escenario</h2>
+        <div class="stage-status"><span class="status-dot" id="statusDot"></span><span id="statusText">Chispa está dormido</span></div>
+      </div>
+      <div class="stage" id="stage">
+        <div class="stage-caption">ESCENARIO 1</div>
+        <div class="sun"></div><div class="cloud"></div><div class="cloud two"></div>
+        <div class="speech" id="speech">Zzz… qué tranquilo 😴</div>
+        <div class="hill one"></div><div class="hill two"></div>
+        <div class="sprite-holder">
+          <svg class="sprite sleeping" id="sprite" viewBox="0 0 220 240" role="img" aria-label="Chispa, personaje dormido">
+            <g class="costume-sleep">
+              <g class="zzz" fill="#fff" stroke="#7d94d8" stroke-width="1.5" font-family="system-ui" font-weight="900">
+                <text x="153" y="61" font-size="24">Z</text><text class="z2" x="175" y="39" font-size="17">z</text>
+              </g>
+              <ellipse cx="110" cy="204" rx="67" ry="12" fill="#4b9d79" opacity=".23"/>
+              <path d="M49 91 L51 29 Q52 18 64 29 L91 53 Q111 46 130 53 L157 28 Q169 18 171 31 L172 92" fill="#8b78e9" stroke="#584ab5" stroke-width="5" stroke-linejoin="round"/>
+              <path d="M61 45 L84 65 L61 78Z" fill="#f5bad3"/><path d="M160 45 L137 65 L160 78Z" fill="#f5bad3"/>
+              <ellipse cx="110" cy="126" rx="70" ry="70" fill="#a895ff" stroke="#584ab5" stroke-width="5"/>
+              <ellipse cx="110" cy="147" rx="43" ry="34" fill="#e3dcff"/>
+              <path d="M73 120 Q83 130 94 120 M126 120 Q137 130 147 120" fill="none" stroke="#463b81" stroke-width="5" stroke-linecap="round"/>
+              <path d="M103 139 Q110 145 117 139" fill="none" stroke="#6e5aca" stroke-width="3" stroke-linecap="round"/>
+              <ellipse cx="79" cy="139" rx="9" ry="5" fill="#ff98bb" opacity=".65"/><ellipse cx="141" cy="139" rx="9" ry="5" fill="#ff98bb" opacity=".65"/>
+              <path d="M69 170 Q54 181 65 196 Q78 207 92 193" fill="#a895ff" stroke="#584ab5" stroke-width="5" stroke-linecap="round"/>
+              <path d="M151 170 Q166 181 155 196 Q142 207 128 193" fill="#a895ff" stroke="#584ab5" stroke-width="5" stroke-linecap="round"/>
+              <path d="M74 181 Q110 195 146 181" fill="none" stroke="#584ab5" stroke-width="4" stroke-linecap="round"/>
+              <path d="M93 187 Q110 199 127 187 L123 208 Q110 218 97 208Z" fill="#7f6be0" stroke="#584ab5" stroke-width="3"/>
+              <path d="M99 196 L110 201 L121 196" fill="none" stroke="#f5d7ff" stroke-width="3" stroke-linecap="round"/>
+              <path d="M37 211 Q66 196 91 211 Q110 223 129 211 Q154 196 183 211 L178 229 L42 229Z" fill="#91c8ff" stroke="#5e8ee2" stroke-width="4" stroke-linejoin="round"/>
+              <path d="M51 220 Q110 231 169 220" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".9"/>
+            </g>
+            <g class="costume-happy">
+              <ellipse cx="110" cy="211" rx="62" ry="10" fill="#4b9d79" opacity=".23"/>
+              <path d="M49 86 L51 26 Q52 15 64 28 L91 51 Q111 44 130 51 L157 27 Q169 17 171 30 L172 86" fill="#ffba49" stroke="#d66d39" stroke-width="5" stroke-linejoin="round"/>
+              <path d="M61 43 L84 63 L61 76Z" fill="#ffdfae"/><path d="M160 43 L137 63 L160 76Z" fill="#ffdfae"/>
+              <ellipse cx="110" cy="123" rx="70" ry="70" fill="#ffd064" stroke="#d66d39" stroke-width="5"/>
+              <ellipse cx="110" cy="146" rx="42" ry="33" fill="#fff0cc"/>
+              <path d="M75 118 Q84 105 94 118 M126 118 Q136 105 145 118" fill="none" stroke="#71412d" stroke-width="5" stroke-linecap="round"/>
+              <ellipse cx="80" cy="139" rx="10" ry="6" fill="#ff7e9e"/><ellipse cx="140" cy="139" rx="10" ry="6" fill="#ff7e9e"/>
+              <path d="M98 137 Q110 147 122 137 Q120 164 110 164 Q100 164 98 137Z" fill="#8b4266" stroke="#71412d" stroke-width="2.5" stroke-linejoin="round"/>
+              <path d="M104 156 Q110 160 116 156" fill="none" stroke="#ffb3d0" stroke-width="3" stroke-linecap="round"/>
+              <path d="M65 162 Q35 137 27 111 Q21 95 34 94 Q48 95 52 117 L81 151Z" fill="#ffd064" stroke="#d66d39" stroke-width="5" stroke-linejoin="round"/>
+              <path d="M155 162 Q185 137 193 111 Q199 95 186 94 Q172 95 168 117 L139 151Z" fill="#ffd064" stroke="#d66d39" stroke-width="5" stroke-linejoin="round"/>
+              <path d="M70 176 Q110 195 150 176 L143 200 Q110 216 77 200Z" fill="#fb8baf" stroke="#d65c8a" stroke-width="4" stroke-linejoin="round"/>
+              <path d="M84 185 Q110 196 136 185" fill="none" stroke="#ffe3ee" stroke-width="4" stroke-linecap="round"/>
+              <path d="M84 194 L72 210 M136 194 L148 210" stroke="#d66d39" stroke-width="7" stroke-linecap="round"/>
+              <path d="M75 211 L65 218 M145 211 L155 218" stroke="#d66d39" stroke-width="9" stroke-linecap="round"/>
+              <g class="spark s1" fill="#fff" stroke="#ffbb32" stroke-width="1.4"><path d="M27 54 L32 68 L46 73 L32 78 L27 92 L22 78 L8 73 L22 68Z"/></g>
+              <g class="spark s2" fill="#fff" stroke="#ffbb32" stroke-width="1.4"><path d="M185 48 L189 59 L200 63 L189 67 L185 78 L181 67 L170 63 L181 59Z"/></g>
+              <g class="spark s3" fill="#fff" stroke="#ffbb32" stroke-width="1.4"><path d="M174 143 L178 152 L187 156 L178 160 L174 169 L170 160 L161 156 L170 152Z"/></g>
+            </g>
+          </svg>
+        </div>
+      </div>
+      <div class="stage-bottom">
+        <div class="costume-name"><span class="costume-swatch" id="costumeSwatch">💤</span><span>Disfraz: <strong id="costumeText">Dormilón</strong></span></div>
+        <div class="stage-hint" id="stageHint">Haz un sonido para despertarme</div>
+      </div>
+    </section>
+  </main>
+
+  <section class="controls" aria-label="Controles y medidor de sonido">
+    <div class="control-panel">
+      <div class="control-head"><h2>🎮 Control del proyecto</h2><span class="mini-label">PLAY</span></div>
+      <div class="button-row">
+        <button class="btn primary" id="startBtn">▶ Iniciar micrófono</button>
+        <button class="btn stop" id="stopBtn" disabled>■ Detener</button>
+        <button class="btn test" id="testBtn">👏 Probar reacción</button>
+      </div>
+      <p class="tiny-note" id="micMessage">Pulsa «Iniciar micrófono» y permite el acceso cuando el navegador lo solicite. La prueba simula un aplauso sin usar el micrófono.</p>
+    </div>
+    <div class="control-panel">
+      <div class="control-head"><h2>📊 Volumen del micrófono</h2><span class="mini-label">EN VIVO</span></div>
+      <div class="meter-line">
+        <div class="meter-number"><span id="levelNum">—</span> <small>dB(A)*</small></div>
+        <div class="threshold">Umbral: 50 dB(A)</div>
+      </div>
+      <div class="meter-track" aria-label="Medidor orientativo de volumen"><div class="meter-fill" id="meterFill"></div><div class="meter-threshold" title="Umbral de 50 dB(A)"></div></div>
+      <div class="meter-ends"><span>0 · silencio</span><span>50 · umbral</span><span>120 · fuerte</span></div>
+      <div class="calibration"><label for="calibration">Corrección estimada del micrófono</label><output id="calibrationOut" for="calibration">+80 dB</output></div>
+      <input type="range" min="60" max="110" value="80" id="calibration" aria-label="Corrección estimada del micrófono" />
+      <div class="slider-caption"><span>+60 dB</span><span>+110 dB</span></div>
+    </div>
+  </section>
+  <div class="footnote"><strong>*Nota:</strong> el navegador mide la señal digital del micrófono (dBFS), no el nivel acústico calibrado. La lectura dB(A) es orientativa y depende del micrófono, su ganancia y la corrección elegida; para garantizar 50 dB(A) reales hace falta calibrarlo con un sonómetro. El personaje detecta volumen, no distingue automáticamente entre voz y aplausos.</div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+(() => {
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const testBtn = document.getElementById('testBtn');
+  const livePill = document.getElementById('livePill');
+  const liveText = document.getElementById('liveText');
+  const statusDot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+  const sprite = document.getElementById('sprite');
+  const speech = document.getElementById('speech');
+  const costumeText = document.getElementById('costumeText');
+  const costumeSwatch = document.getElementById('costumeSwatch');
+  const stageHint = document.getElementById('stageHint');
+  const meterFill = document.getElementById('meterFill');
+  const levelNum = document.getElementById('levelNum');
+  const calibration = document.getElementById('calibration');
+  const calibrationOut = document.getElementById('calibrationOut');
+  const micMessage = document.getElementById('micMessage');
+  const toast = document.getElementById('toast');
+
+  let audioContext = null;
+  let analyser = null;
+  let stream = null;
+  let source = null;
+  let rafId = null;
+  let isListening = false;
+  let lastLoudAt = 0;
+  let toastTimer = null;
+  let testTimer = null;
+  let smoothedDbfs = -100;
+  const SILENCE_DELAY_MS = 1450;
+  const data = new Float32Array(2048);
+
+  function showToast(message) {
+    toast.textContent = message;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
+  }
+
+  function setCharacterHappy(isTest = false) {
+    if (!sprite.classList.contains('happy')) {
+      sprite.classList.remove('sleeping');
+      sprite.classList.add('happy');
+      sprite.setAttribute('aria-label', 'Chispa está feliz y saltando');
+      statusDot.classList.add('happy');
+      statusText.textContent = isTest ? '¡Prueba de sonido!' : '¡Chispa está feliz!';
+      speech.textContent = isTest ? '¡Qué aplauso! 👏' : '¡Yujuuu! ✨';
+      costumeText.textContent = 'Fiesta';
+      costumeSwatch.textContent = '🌟';
+      stageHint.textContent = isTest ? 'Reacción de prueba' : '¡Detecté un sonido fuerte!';
+    }
+  }
+
+  function setCharacterSleep() {
+    if (!sprite.classList.contains('sleeping')) {
+      sprite.classList.remove('happy');
+      sprite.classList.add('sleeping');
+      sprite.setAttribute('aria-label', 'Chispa está dormido');
+      statusDot.classList.remove('happy');
+      statusText.textContent = 'Chispa está dormido';
+      speech.textContent = 'Zzz… qué tranquilo 😴';
+      costumeText.textContent = 'Dormilón';
+      costumeSwatch.textContent = '💤';
+      stageHint.textContent = 'Haz un sonido para despertarme';
+    }
+  }
+
+  function updateMeter(estimatedDb) {
+    const visible = Math.max(0, Math.min(120, estimatedDb));
+    meterFill.style.width = `${(visible / 120) * 100}%`;
+    levelNum.textContent = estimatedDb < 0 ? '‹0' : String(Math.round(visible));
+  }
+
+  function getEstimatedLevel() {
+    analyser.getFloatTimeDomainData(data);
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+    const rms = Math.sqrt(sum / data.length);
+    const dbfs = rms > 0 ? 20 * Math.log10(rms) : -100;
+    // Suavizado corto: estabiliza el indicador, conservando los picos de aplausos/voz.
+    smoothedDbfs = Math.max(dbfs, smoothedDbfs * 0.72 + dbfs * 0.28);
+    if (dbfs > smoothedDbfs) smoothedDbfs = dbfs;
+    return { dbfs, estimated: dbfs + Number(calibration.value) };
+  }
+
+  function loop() {
+    if (!isListening || !analyser) return;
+    const now = performance.now();
+    const { estimated } = getEstimatedLevel();
+    updateMeter(estimated);
+    if (estimated >= 50) {
+      lastLoudAt = now;
+      setCharacterHappy(false);
+    } else if (now - lastLoudAt > SILENCE_DELAY_MS) {
+      setCharacterSleep();
+    }
+    rafId = requestAnimationFrame(loop);
+  }
+
+  async function startMic() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      micMessage.textContent = 'Este navegador no permite acceder al micrófono. Prueba una versión reciente de Chrome, Edge o Firefox.';
+      showToast('No se encontró acceso al micrófono en este navegador.');
+      return;
+    }
+    try {
+      startBtn.disabled = true;
+      micMessage.textContent = 'Esperando el permiso del micrófono…';
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+        video: false
+      });
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) throw new Error('Este navegador no tiene Web Audio API.');
+      audioContext = new AudioContextClass();
+      if (audioContext.state === 'suspended') await audioContext.resume();
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.15;
+      source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+      isListening = true;
+      lastLoudAt = performance.now();
+      smoothedDbfs = -100;
+      livePill.classList.add('listening');
+      liveText.textContent = 'MICRÓFONO ACTIVO';
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      micMessage.textContent = 'Te estoy escuchando. Habla o da una palmada para despertar a Chispa.';
+      showToast('¡Micrófono conectado! Haz un sonido para probarlo.');
+      loop();
+    } catch (error) {
+      console.error(error);
+      startBtn.disabled = false;
+      micMessage.textContent = error && error.name === 'NotAllowedError'
+        ? 'No se concedió permiso. Activa el micrófono en los permisos del sitio e inténtalo de nuevo.'
+        : `No se pudo iniciar el micrófono: ${error.message || 'error desconocido'}`;
+      showToast(error && error.name === 'NotAllowedError' ? 'Permiso de micrófono denegado.' : 'No se pudo iniciar el micrófono.');
+      stopMic(false);
+    }
+  }
+
+  async function stopMic(showMessage = true) {
+    isListening = false;
+    if (rafId !== null) cancelAnimationFrame(rafId);
+    rafId = null;
+    if (stream) stream.getTracks().forEach(track => track.stop());
+    stream = null;
+    source = null;
+    analyser = null;
+    if (audioContext) {
+      try { await audioContext.close(); } catch (_) {}
+    }
+    audioContext = null;
+    livePill.classList.remove('listening');
+    liveText.textContent = 'MICRÓFONO APAGADO';
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    levelNum.textContent = '—';
+    meterFill.style.width = '0%';
+    setCharacterSleep();
+    if (showMessage) {
+      micMessage.textContent = 'Micrófono detenido. Inícialo de nuevo para escuchar sonidos.';
+      showToast('Micrófono apagado.');
+    }
+  }
+
+  startBtn.addEventListener('click', startMic);
+  stopBtn.addEventListener('click', () => stopMic(true));
+  calibration.addEventListener('input', () => {
+    calibrationOut.value = `+${calibration.value} dB`;
+    calibrationOut.textContent = `+${calibration.value} dB`;
+  });
+  testBtn.addEventListener('click', () => {
+    clearTimeout(testTimer);
+    lastLoudAt = performance.now();
+    setCharacterHappy(true);
+    showToast('¡Prueba activada! Chispa cambió al disfraz de fiesta.');
+    testTimer = setTimeout(() => {
+      if (!isListening) setCharacterSleep();
+    }, SILENCE_DELAY_MS + 500);
+  });
+  window.addEventListener('pagehide', () => {
+    if (stream) stream.getTracks().forEach(track => track.stop());
+    if (audioContext && audioContext.state !== 'closed') audioContext.close();
+  });
+})();
+</script>
+</body>
+</html>

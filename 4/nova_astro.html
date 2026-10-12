@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NOVA — Explorador del sonido</title>
+<style>
+  :root{--night:#10142e;--panel:#1b2148;--lav:#a99cff;--mint:#a5f4db;--pink:#ff9fc7;--white:#f7f6ff;--muted:#a8afd8;--yellow:#ffe99a}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 20% 0%,#34356c 0,transparent 38%),radial-gradient(ellipse at 100% 80%,#233d67 0,transparent 35%),var(--night);color:var(--white);font-family:ui-rounded,"Trebuchet MS",system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px;overflow-x:hidden}
+  body:before,body:after{content:"";position:fixed;inset:0;pointer-events:none;background-image:radial-gradient(2px 2px at 11% 21%,#fff 70%,transparent),radial-gradient(1px 1px at 71% 13%,#fff 70%,transparent),radial-gradient(2px 2px at 83% 54%,#d7d4ff 70%,transparent),radial-gradient(1px 1px at 28% 77%,#fff 70%,transparent),radial-gradient(1px 1px at 56% 91%,#fff 70%,transparent),radial-gradient(2px 2px at 42% 37%,#fff 70%,transparent);opacity:.6}
+  .wrap{position:relative;width:min(100%,1020px);z-index:1}
+  header{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 18px;padding:0 4px}
+  .brand{display:flex;align-items:center;gap:12px}.logo{width:45px;height:45px;border-radius:15px;background:linear-gradient(135deg,var(--lav),#6ce5d1);display:grid;place-items:center;color:#1c214c;font-size:25px;box-shadow:0 7px 25px #827cff55}
+  h1{font-size:clamp(22px,4vw,31px);margin:0;letter-spacing:.04em}.sub{color:var(--muted);font-size:13px;margin-top:3px}.pill{border:1px solid #5b6396;background:#252b55;border-radius:999px;padding:9px 13px;color:#dfe2ff;font-size:12px;white-space:nowrap}
+  .layout{display:grid;grid-template-columns:1.05fr .95fr;gap:18px}
+  .card{border:1px solid #4c548a;border-radius:27px;background:linear-gradient(155deg,#242a55eF,#171c3bf2);box-shadow:0 22px 60px #05081955;overflow:hidden}
+  .scene{min-height:480px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:25px 18px 24px;background:radial-gradient(ellipse at center 47%,#6969b73b,transparent 53%)}
+  .planet{position:absolute;width:255px;height:255px;border-radius:50%;border:1px solid #9a9fff35;top:50%;left:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 27px #a09bff08,0 0 0 56px #a09bff06;animation:orbit 18s linear infinite}
+  .planet:before{content:"";position:absolute;width:9px;height:9px;border-radius:50%;background:var(--yellow);top:20px;left:39px;box-shadow:0 0 15px var(--yellow)}
+  .planet:after{content:"✦";position:absolute;color:var(--mint);font-size:18px;right:12px;bottom:50px}
+  @keyframes orbit{to{transform:translate(-50%,-50%) rotate(360deg)}}
+  .character{width:220px;height:275px;position:relative;z-index:2;transform-origin:50% 80%;animation:float 3.2s ease-in-out infinite;filter:drop-shadow(0 15px 15px #05071e60)}
+  @keyframes float{0%,100%{transform:translateY(2px) rotate(-1deg)}50%{transform:translateY(-9px) rotate(1deg)}}
+  .character.happy{animation:cheer .55s ease-in-out infinite alternate}
+  @keyframes cheer{from{transform:translateY(-7px) rotate(-5deg) scale(1.01)}to{transform:translateY(5px) rotate(5deg) scale(1.04)}}
+  .character.sleep{animation:nap 4s ease-in-out infinite}
+  @keyframes nap{0%,100%{transform:translateY(5px) rotate(-2deg)}50%{transform:translateY(12px) rotate(2deg)}}
+  .status{z-index:3;margin-top:6px;text-align:center}.status strong{display:block;font-size:22px}.status span{color:var(--muted);font-size:13px}.speech{display:inline-block;margin-top:13px;padding:9px 15px;border-radius:14px;background:#333968;border:1px solid #7179b4;color:#e8e9ff;font-size:13px;min-height:37px;max-width:90%}
+  .controls{padding:24px}.sectionhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:17px}.sectionhead h2{font-size:18px;margin:0}.tiny{color:var(--muted);font-size:11px}
+  .buttons{display:flex;gap:10px;flex-wrap:wrap}.btn{border:0;border-radius:14px;padding:12px 15px;font:700 13px inherit;cursor:pointer;transition:transform .15s,filter .15s}.btn:hover{transform:translateY(-2px);filter:brightness(1.07)}.primary{background:linear-gradient(120deg,#b0a1ff,#91ecd6);color:#1b2145;flex:1}.secondary{background:#333a6c;color:var(--white);border:1px solid #6069a5}.stop{background:#482c56;color:#ffd7eb;border:1px solid #88517b}
+  .meterbox{margin:24px 0 20px;padding:16px;border:1px solid #414a80;background:#141a38;border-radius:18px}.meterlabel{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:12px}.meterlabel span{color:var(--muted);font-size:12px}.meterlabel b{font-size:20px;color:var(--mint);font-variant-numeric:tabular-nums}.track{height:13px;background:#2c335f;border-radius:99px;overflow:hidden;position:relative}.fill{height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,#8be6d1,#bbabff,#ff9fc7);transition:width .08s linear}.ticks{display:flex;justify-content:space-between;color:#8f97c8;font-size:10px;margin-top:7px}
+  .setting{padding:16px;border-radius:18px;background:#272d59;border:1px solid #454e86;margin-bottom:14px}.settingtop{display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-bottom:9px}.settingtop b{color:var(--yellow)}input[type=range]{width:100%;accent-color:#a99cff;cursor:pointer}.hint{font-size:11px;line-height:1.55;color:#aeb5e0;margin:9px 0 0}.threshold{display:flex;align-items:center;justify-content:space-between;gap:8px}.threshold strong{font-size:18px}.threshold em{font-size:11px;color:var(--mint);font-style:normal}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:15px}.step{padding:10px 8px;text-align:center;border:1px solid #424b7f;background:#20264c;border-radius:13px;color:#bbc2ec;font-size:10px}.step b{display:block;font-size:17px;margin-bottom:5px}
+  footer{padding:14px 5px 0;color:#8e96c4;font-size:11px;line-height:1.5;text-align:center}
+  @media(max-width:760px){body{padding:13px}.layout{grid-template-columns:1fr}.scene{min-height:390px}.character{transform:scale(.9)}.planet{width:220px;height:220px}header{align-items:flex-start}.pill{font-size:10px}.controls{padding:19px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><div class="brand"><div class="logo">✦</div><div><h1>NOVA</h1><div class="sub">Explorador espacial del sonido</div></div></div><div class="pill" id="connection">● MICRÓFONO DESCONECTADO</div></header>
+  <main class="layout">
+    <section class="card scene" aria-label="Escenario y personaje">
+      <div class="planet"></div>
+      <svg id="nova" class="character sleep" viewBox="0 0 220 275" role="img" aria-label="Astronauta NOVA dormido">
+        <!-- antenas -->
+        <path d="M107 61 Q102 36 119 25" fill="none" stroke="#8cead6" stroke-width="8" stroke-linecap="round"/>
+        <circle cx="121" cy="22" r="10" fill="#ffe99a" stroke="#fff4c8" stroke-width="3"/>
+        <!-- jetpack -->
+        <rect x="38" y="130" width="33" height="83" rx="13" fill="#7a83c8" stroke="#c3c6ff" stroke-width="4"/>
+        <rect x="44" y="146" width="21" height="22" rx="6" fill="#a7f3e0"/>
+        <!-- body -->
+        <path d="M72 119 Q110 99 148 119 L166 211 Q163 234 143 238 L77 238 Q57 234 54 211Z" fill="#f0f0ff" stroke="#c2c8ff" stroke-width="5"/>
+        <path d="M77 143 Q110 128 143 143 L149 194 Q110 208 71 194Z" fill="#a7a9ee"/>
+        <rect x="87" y="161" width="46" height="26" rx="8" fill="#222b5b" stroke="#7be3d3" stroke-width="3"/>
+        <circle cx="99" cy="174" r="4" fill="#9cf1d9"/><circle cx="111" cy="174" r="4" fill="#ffe99a"/><circle cx="123" cy="174" r="4" fill="#ff9fc7"/>
+        <!-- arms -->
+        <path d="M66 135 Q44 146 42 178 Q44 190 55 186 L75 154Z" fill="#f0f0ff" stroke="#c2c8ff" stroke-width="5" stroke-linejoin="round"/>
+        <path d="M153 135 Q176 145 179 176 Q177 190 166 186 L145 154Z" fill="#f0f0ff" stroke="#c2c8ff" stroke-width="5" stroke-linejoin="round"/>
+        <circle cx="49" cy="183" r="10" fill="#8fe8d7"/><circle cx="171" cy="183" r="10" fill="#8fe8d7"/>
+        <!-- helmet -->
+        <circle cx="110" cy="83" r="58" fill="#dce3ff" stroke="#a5a8ee" stroke-width="7"/>
+        <circle cx="110" cy="83" r="46" fill="#303a72" stroke="#7b8bc8" stroke-width="4"/>
+        <path d="M79 55 Q97 40 121 45" stroke="#a9b8ff" stroke-width="5" stroke-linecap="round" fill="none" opacity=".65"/>
+        <!-- face variants controlled by JS -->
+        <g id="faceSleep" stroke="#f2f3ff" stroke-width="4" stroke-linecap="round" fill="none"><path d="M86 83 q8 9 16 0"/><path d="M119 83 q8 9 16 0"/><path d="M104 98 q6 4 12 0"/></g>
+        <g id="faceHappy" stroke="#f2f3ff" stroke-width="4" stroke-linecap="round" fill="none" style="display:none"><path d="M84 80 q9 -12 18 0"/><path d="M118 80 q9 -12 18 0"/><path d="M96 94 q14 22 28 0" fill="#ff9fc7" stroke="#ffb8d5"/><path d="M101 99 h18" stroke="#fff" stroke-width="2"/></g>
+        <g id="blush" fill="#ff9fc7" opacity=".0"><ellipse cx="78" cy="97" rx="9" ry="5"/><ellipse cx="142" cy="97" rx="9" ry="5"/></g>
+        <!-- boots -->
+        <path d="M76 229 L104 229 L104 251 Q91 260 70 251Z" fill="#8d92d5" stroke="#d5d7ff" stroke-width="4"/>
+        <path d="M116 229 L144 229 L151 251 Q131 260 116 251Z" fill="#8d92d5" stroke="#d5d7ff" stroke-width="4"/>
+        <path d="M77 246 h23 M121 246 h24" stroke="#9cf1d9" stroke-width="4" stroke-linecap="round"/>
+      </svg>
+      <div class="status"><strong id="mood">Modo hibernación</strong><span id="description">NOVA recarga energía en silencio…</span><div class="speech" id="speech">Z z z… hasta el próximo sonido</div></div>
+    </section>
+    <section class="card controls">
+      <div class="sectionhead"><h2>Centro de control</h2><span class="tiny">MISIÓN 004</span></div>
+      <div class="buttons"><button class="btn primary" id="start">▶ Activar micrófono</button><button class="btn secondary" id="test">✦ Probar reacción</button><button class="btn stop" id="stop" disabled>■ Detener</button></div>
+      <div class="meterbox"><div class="meterlabel"><span>Intensidad del sonido</span><b id="level">0%</b></div><div class="track"><div class="fill" id="fill"></div></div><div class="ticks"><span>Silencio</span><span>Sonido fuerte</span></div></div>
+      <div class="setting"><div class="settingtop"><label for="sensitivity">Sensibilidad del detector</label><b id="sensValue">50%</b></div><input id="sensitivity" type="range" min="10" max="90" value="50"/><p class="hint">Desliza para que NOVA reaccione a sonidos más suaves o necesite un sonido más fuerte.</p></div>
+      <div class="setting"><div class="threshold"><div><div class="settingtop" style="margin-bottom:4px">Umbral de reacción</div><strong id="thresholdText">50 unidades aprox.</strong></div><em>● AJUSTABLE</em></div><p class="hint">La lectura del navegador no está calibrada en dB(A) reales. El umbral se usa como referencia de intensidad, no como sonómetro certificado.</p></div>
+      <div class="steps"><div class="step"><b>🌙</b>Silencio<br>hiberna</div><div class="step"><b>🎙️</b>Detecta<br>sonido</div><div class="step"><b>🚀</b>Modo<br>feliz</div></div>
+    </section>
+  </main>
+  <footer>Proyecto interactivo HTML · El audio se procesa localmente en el navegador y no se graba ni se envía a ningún servidor. Usa los permisos del navegador para activar el micrófono.</footer>
+</div>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const nova = $('nova'), mood = $('mood'), description = $('description'), speech = $('speech');
+  const fill = $('fill'), level = $('level'), connection = $('connection');
+  const startBtn = $('start'), stopBtn = $('stop'), testBtn = $('test'), sensitivity = $('sensitivity');
+  let audioCtx = null, stream = null, analyser = null, source = null, raf = null, testTimer = null;
+  let smiling = false, smoothed = 0, lastSound = 0;
+
+  function setMood(happy, message) {
+    smiling = happy;
+    nova.classList.toggle('happy', happy);
+    nova.classList.toggle('sleep', !happy);
+    $('faceSleep').style.display = happy ? 'none' : '';
+    $('faceHappy').style.display = happy ? '' : 'none';
+    $('blush').style.opacity = happy ? '.85' : '0';
+    nova.setAttribute('aria-label', happy ? 'Astronauta NOVA feliz' : 'Astronauta NOVA dormido');
+    mood.textContent = happy ? '¡Modo celebración!' : 'Modo hibernación';
+    description.textContent = happy ? '¡Se detectó actividad sonora!' : 'NOVA recarga energía en silencio…';
+    speech.textContent = message || (happy ? '¡Bip-bip! ¡Qué sonido tan genial!' : 'Z z z… hasta el próximo sonido');
+  }
+
+  function displayLevel(value) {
+    const pct = Math.max(0, Math.min(100, value));
+    fill.style.width = pct + '%';
+    level.textContent = Math.round(pct) + '%';
+  }
+
+  function updateReadouts() {
+    const s = Number(sensitivity.value);
+    $('sensValue').textContent = s + '%';
+    $('thresholdText').textContent = Math.round(s) + ' unidades aprox.';
+  }
+  sensitivity.addEventListener('input', updateReadouts);
+
+  async function startMic() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      speech.textContent = 'Este navegador no permite acceder al micrófono aquí. Prueba desde localhost o HTTPS.';
+      return;
+    }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({audio: {echoCancellation: false, noiseSuppression: false, autoGainControl: false}});
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioCtx.createAnalyser(); analyser.fftSize = 1024; analyser.smoothingTimeConstant = 0.35;
+      source = audioCtx.createMediaStreamSource(stream); source.connect(analyser);
+      connection.textContent = '● MICRÓFONO ACTIVO'; connection.style.color = '#a5f4db';
+      startBtn.disabled = true; stopBtn.disabled = false;
+      speech.textContent = 'Escuchando el entorno… haz un aplauso o habla.';
+      const buffer = new Uint8Array(analyser.fftSize);
+      function frame() {
+        if (!analyser) return;
+        analyser.getByteTimeDomainData(buffer);
+        let sum = 0;
+        for (let i = 0; i < buffer.length; i++) { const v = (buffer[i] - 128) / 128; sum += v * v; }
+        const rms = Math.sqrt(sum / buffer.length);
+        // Presentación relativa y no calibrada: escala la energía RMS para un indicador 0–100.
+        const raw = Math.min(100, Math.max(0, rms * 360));
+        smoothed = smoothed * 0.62 + raw * 0.38;
+        displayLevel(smoothed);
+        const threshold = Math.max(8, Number(sensitivity.value) * 0.65);
+        const now = performance.now();
+        if (smoothed > threshold) {
+          lastSound = now;
+          if (!smiling) setMood(true, '¡Te escuché! ¡Modo celebración activado!');
+        } else if (smiling && now - lastSound > 1600) {
+          setMood(false, 'El espacio está tranquilo… hora de descansar.');
+        }
+        raf = requestAnimationFrame(frame);
+      }
+      frame();
+    } catch (err) {
+      connection.textContent = '● MICRÓFONO SIN ACCESO'; connection.style.color = '#ff9fc7';
+      speech.textContent = err && err.name === 'NotAllowedError' ? 'Permiso denegado. Habilita el micrófono en el navegador.' : 'No pude iniciar el micrófono. Revisa que esté conectado y vuelve a intentar.';
+    }
+  }
+
+  function stopMic() {
+    if (raf) cancelAnimationFrame(raf); raf = null;
+    if (testTimer) clearTimeout(testTimer); testTimer = null;
+    if (stream) stream.getTracks().forEach(track => track.stop()); stream = null;
+    if (source) { try { source.disconnect(); } catch (_) {} } source = null;
+    if (audioCtx) audioCtx.close().catch(() => {}); audioCtx = null; analyser = null;
+    connection.textContent = '● MICRÓFONO DESCONECTADO'; connection.style.color = '';
+    startBtn.disabled = false; stopBtn.disabled = true; smoothed = 0; displayLevel(0);
+    setMood(false, 'Micrófono apagado. Pulsa activar para continuar.');
+  }
+
+  startBtn.addEventListener('click', startMic);
+  stopBtn.addEventListener('click', stopMic);
+  testBtn.addEventListener('click', () => {
+    if (testTimer) clearTimeout(testTimer);
+    setMood(true, '¡Prueba de reacción! ¡NOVA está feliz!'); displayLevel(78);
+    testTimer = setTimeout(() => {
+      if (!analyser) { displayLevel(0); setMood(false, 'Prueba terminada. Activa el micrófono para detectar sonidos reales.'); }
+      testTimer = null;
+    }, 2200);
+  });
+  updateReadouts();
+  window.addEventListener('beforeunload', () => { if (stream) stream.getTracks().forEach(t => t.stop()); if (audioCtx) audioCtx.close(); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scratch → Python · Traductor de Bloques</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --purple:#855CD6;
+    --purple-dark:#7444BF;
+    --palette-bg:#F9F9F9;
+    --coding-bg:#F9F9F9;
+    --border:#D6D6D6;
+    --text:#575E75;
+    /* Colores Scratch 3.0 */
+    --events:#FFBF00;
+    --motion:#4C97FF;
+    --looks:#9966FF;
+    --control:#FFAB19;
+    --variables:#FF8C1A;
+    --sensing:#5CB1D6;
+    --operators:#59C059;
+    --green-flag:#4CBF56;
+    --stop-red:#EC5959;
+  }
+  html,body{height:100%}
+  body{
+    font-family:'Helvetica Neue','Segoe UI',system-ui,sans-serif;
+    background:#E9EEF2;color:var(--text);
+    display:flex;flex-direction:column;
+    overflow:hidden;
+  }
+
+  /* ───── HEADER SCRATCH ───── */
+  .scratch-header{
+    background:linear-gradient(180deg,var(--purple) 0%,var(--purple-dark) 100%);
+    color:white;padding:6px 14px;
+    display:flex;align-items:center;gap:16px;
+    box-shadow:0 2px 6px rgba(0,0,0,.18);
+    z-index:20;flex-shrink:0;
+  }
+  .logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:17px;letter-spacing:-.02em}
+  .logo-cat{font-size:22px}
+  .logo b{font-weight:900}
+  .top-menu{display:flex;gap:2px;margin-left:auto}
+  .top-menu button{
+    background:transparent;border:none;color:white;
+    font-family:inherit;font-size:12.5px;font-weight:600;
+    padding:6px 11px;border-radius:6px;cursor:pointer;
+    transition:background .15s;
+  }
+  .top-menu button:hover{background:rgba(255,255,255,.18)}
+  .top-badge{
+    font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+    padding:4px 10px;border-radius:999px;
+    background:rgba(255,255,255,.18);
+    border:1px solid rgba(255,255,255,.3);
+    margin-left:8px;
+  }
+
+  /* ───── BODY LAYOUT ───── */
+  .scratch-body{
+    display:grid;
+    grid-template-columns:56px 216px minmax(0,1fr) 396px;
+    gap:0;
+    flex:1;min-height:0;
+    background:var(--border);
+  }
+
+  /* ───── CATEGORÍAS ───── */
+  .cat-col{
+    background:#FFFFFF;
+    display:flex;flex-direction:column;
+    align-items:center;
+    padding:10px 0;gap:6px;
+    border-right:1px solid var(--border);
+    overflow-y:auto;
+  }
+  .cat-tab{
+    width:38px;height:38px;border-radius:50%;
+    border:none;cursor:pointer;
+    display:grid;place-items:center;
+    font-size:17px;
+    background:var(--cat-color);
+    box-shadow:0 2px 4px rgba(0,0,0,.18);
+    transition:transform .15s, box-shadow .15s;
+    flex-shrink:0;
+  }
+  .cat-tab:hover{transform:scale(1.1)}
+  .cat-tab.active{
+    outline:3px solid #2E2E2E;
+    outline-offset:2px;
+    box-shadow:0 3px 8px rgba(0,0,0,.3);
+  }
+
+  /* ───── PALETA ───── */
+  .palette-col{
+    background:var(--palette-bg);
+    display:flex;flex-direction:column;
+    overflow:hidden;
+    border-right:1px solid var(--border);
+  }
+  .palette-header{
+    padding:10px 12px 8px;
+    font-size:11px;font-weight:800;
+    text-transform:uppercase;letter-spacing:.1em;
+    color:#888;
+    border-bottom:1px solid #EEE;
+    background:white;
+  }
+  .palette-blocks{
+    flex:1;overflow-y:auto;
+    padding:10px;
+    display:flex;flex-direction:column;gap:6px;
+  }
+  .pal-block{
+    display:flex;align-items:center;gap:8px;
+    padding:9px 12px;border-radius:5px;
+    color:white;font-size:12px;font-weight:700;
+    cursor:pointer;
+    text-shadow:0 1px 2px rgba(0,0,0,.25);
+    box-shadow:0 2px 4px rgba(0,0,0,.2);
+    transition:filter .15s, transform .1s;
+    position:relative;
+    background:var(--cat-color);
+    user-select:none;
+  }
+  .pal-block::before{
+    content:'';position:absolute;top:-3px;left:12px;
+    width:20px;height:6px;background:inherit;
+    border-radius:3px 3px 0 0;
+  }
+  .pal-block:hover{filter:brightness(1.06)}
+  .pal-block:active{transform:scale(.97)}
+  .pal-block.hat{border-radius:22px 22px 5px 5px;padding-top:12px}
+  .pal-block.hat::before{display:none}
+  .pal-block .pal-ic{font-size:14px}
+
+  /* ───── ÁREA DE CÓDIGO ───── */
+  .coding-area{
+    background-color:var(--coding-bg);
+    background-image:radial-gradient(circle,#D0D0D0 1px,transparent 1px);
+    background-size:24px 24px;
+    background-position:0 0;
+    overflow-y:auto;
+    padding:14px;
+    position:relative;
+  }
+  .coding-inner{
+    display:flex;flex-direction:column;
+    align-items:flex-start;
+    min-height:100%;
+  }
+
+  /* Stacks */
+  .ws-stack{
+    display:flex;flex-direction:column;gap:0;
+    padding:1px;border-radius:6px;
+    min-width:220px;
+  }
+  .ws-stack.active{
+    outline:2px dashed var(--green-flag);
+    outline-offset:3px;
+    border-radius:8px;
+  }
+  .ws-stack .ws-stack{
+    margin-left:16px;
+    border-left:1px solid rgba(0,0,0,.12);
+    padding-left:0;
+    margin-top:4px;margin-bottom:4px;
+  }
+  .add-inside{
+    align-self:flex-start;
+    margin:4px 0 2px 8px;
+    padding:3px 10px;
+    font-family:inherit;font-size:10.5px;font-weight:800;
+    border-radius:999px;
+    background:rgba(255,255,255,.85);
+    border:1px dashed #B5B5B5;
+    color:#666;cursor:pointer;
+    transition:all .15s;
+  }
+  .add-inside:hover{
+    background:rgba(76,191,86,.14);
+    border-color:var(--green-flag);
+    color:#2E7D32;
+  }
+
+  /* Bloques workspace */
+  .ws-block{
+    position:relative;
+    padding:8px 10px;margin-top:4px;
+    border-radius:5px;color:white;
+    font-size:12.5px;font-weight:700;
+    text-shadow:0 1px 2px rgba(0,0,0,.25);
+    box-shadow:0 2px 4px rgba(0,0,0,.2);
+    background:var(--cat-color);
+    animation:pop .16s ease;
+  }
+  @keyframes pop{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+  .ws-block::before{
+    content:'';position:absolute;top:-3px;left:14px;
+    width:22px;height:6px;background:inherit;
+    border-radius:3px 3px 0 0;
+  }
+  .ws-block.hat{
+    border-radius:22px 22px 5px 5px;
+    padding-top:12px;margin-top:8px;
+  }
+  .ws-block.hat::before{display:none}
+  .ws-block.c-block{padding-bottom:6px}
+  .ws-block .row{display:flex;align-items:center;flex-wrap:wrap;gap:5px}
+  .else-label{
+    margin:7px 0 2px 8px;
+    font-size:10px;font-weight:900;
+    text-transform:uppercase;letter-spacing:.1em;
+    color:rgba(255,255,255,.75);
+  }
+  .ws-block-actions{
+    margin-left:auto;display:flex;gap:2px;
+  }
+  .ws-block-actions button{
+    width:19px;height:19px;border-radius:4px;
+    border:1px solid rgba(255,255,255,.4);
+    background:rgba(0,0,0,.2);color:white;
+    font-size:8.5px;line-height:1;cursor:pointer;
+    display:grid;place-items:center;
+  }
+  .ws-block-actions button:hover{background:rgba(0,0,0,.4)}
+
+  /* Inputs dentro de bloques */
+  .ws-input{
+    font-family:inherit;font-size:11.5px;font-weight:700;
+    border-radius:999px;border:1px solid rgba(0,0,0,.2);
+    background:white;color:#333;
+    padding:3px 8px;outline:none;min-width:36px;
+  }
+  .ws-input:focus{box-shadow:0 0 0 2px rgba(255,255,255,.6)}
+  .ws-input.num{width:50px;text-align:center}
+  .ws-input.msg{width:120px}
+  .ws-input.var{width:85px}
+  .ws-input.expr{width:60px;text-align:center}
+
+  /* Expresiones */
+  .expr-lit{display:inline-flex;align-items:center;gap:1px}
+  .expr-op{
+    display:inline-flex;align-items:center;gap:2px;
+    padding:2px;border-radius:8px;
+    background:rgba(0,0,0,.16);
+    border:1px solid rgba(255,255,255,.18);
+    flex-wrap:wrap;
+  }
+  .opsel{
+    font-family:inherit;font-size:10.5px;font-weight:800;
+    border-radius:6px;border:1px solid rgba(0,0,0,.2);
+    background:white;color:#333;
+    padding:2px 3px;max-width:80px;cursor:pointer;
+  }
+  .mini-btn{
+    width:16px;height:16px;border-radius:50%;
+    border:1px solid rgba(0,0,0,.2);
+    background:rgba(255,255,255,.9);color:#333;
+    font-size:9px;font-weight:900;cursor:pointer;
+    display:grid;place-items:center;
+  }
+  .mini-btn:hover{background:white}
+  .mini-btn.danger{color:#C62828}
+
+  .empty-ws{
+    margin:auto;text-align:center;color:#AAA;
+    padding:40px 20px;display:flex;flex-direction:column;
+    align-items:center;gap:10px;
+  }
+  .empty-ws .icon{font-size:52px;opacity:.8}
+  .empty-ws p{font-size:13px;max-width:260px;line-height:1.5}
+
+  /* ───── STAGE COLUMN ───── */
+  .stage-col{
+    background:var(--palette-bg);
+    display:flex;flex-direction:column;
+    overflow-y:auto;
+    padding:10px;gap:8px;
+    border-left:1px solid var(--border);
+  }
+  .stage-controls{
+    display:flex;align-items:center;gap:6px;
+  }
+  .stage-btn{
+    width:32px;height:32px;border-radius:6px;
+    border:1px solid var(--border);background:white;
+    cursor:pointer;display:grid;place-items:center;
+    font-size:15px;transition:background .15s;
+  }
+  .stage-btn.flag{color:var(--green-flag)}
+  .stage-btn.stop{color:var(--stop-red)}
+  .stage-btn:hover{background:#F0F0F0}
+  .stage-label{
+    margin-left:auto;font-size:10.5px;font-weight:800;
+    color:#888;text-transform:uppercase;letter-spacing:.08em;
+  }
+  .stage-canvas{
+    background:white;
+    border:1px solid var(--border);border-radius:6px;
+    aspect-ratio:4/3;
+    position:relative;display:grid;place-items:center;
+    overflow:hidden;
+  }
+  .stage-cat{font-size:56px;user-select:none}
+  .stage-hint{
+    position:absolute;bottom:6px;right:8px;
+    font-size:9.5px;color:#CCC;font-weight:700;
+    letter-spacing:.04em;
+  }
+  .sprites-panel{
+    background:white;border:1px solid var(--border);
+    border-radius:6px;padding:6px;
+    display:flex;gap:4px;
+  }
+  .sprite-item{
+    display:flex;flex-direction:column;align-items:center;
+    gap:1px;padding:5px 8px;border-radius:6px;
+    cursor:pointer;transition:background .15s;
+  }
+  .sprite-item.active{background:#E8F0FE;outline:2px solid var(--motion);outline-offset:-2px}
+  .sprite-item:hover{background:#F0F0F0}
+  .sprite-icon{font-size:22px}
+  .sprite-name{font-size:9.5px;font-weight:700;color:#666}
+
+  /* Python panel */
+  .python-panel{
+    background:#282C34;border-radius:6px;
+    overflow:hidden;display:flex;flex-direction:column;
+    flex:1;min-height:200px;
+  }
+  .python-header{
+    display:flex;align-items:center;gap:6px;
+    padding:7px 10px;background:#21252B;
+    color:#ABB2BF;font-size:11px;font-weight:700;
+  }
+  .python-header .dots{display:flex;gap:4px}
+  .python-header .dot{width:8px;height:8px;border-radius:50%}
+  .python-header .dot:nth-child(1){background:#FF5F57}
+  .python-header .dot:nth-child(2){background:#FEBC2E}
+  .python-header .dot:nth-child(3){background:#28C840}
+  .python-code{
+    margin:0;padding:10px 12px;
+    font-family:'JetBrains Mono','Fira Code',Consolas,monospace;
+    font-size:11px;line-height:1.6;color:#ABB2BF;
+    overflow:auto;flex:1;
+    max-height:280px;
+  }
+  .py-kw{color:#C678DD;font-weight:600}
+  .py-str{color:#98C379}
+  .py-num{color:#D19A66}
+  .copy-btn{
+    padding:8px;font-family:inherit;font-size:11.5px;
+    font-weight:800;background:var(--motion);color:white;
+    border:none;cursor:pointer;transition:background .15s;
+  }
+  .copy-btn:hover{background:#3B82F6}
+
+  /* ───── TABLA OPERADORES ───── */
+  .op-section{
+    background:white;padding:18px 24px;
+    border-top:1px solid var(--border);
+    max-height:240px;overflow-y:auto;
+    flex-shrink:0;
+  }
+  .op-section h2{
+    font-size:14px;margin-bottom:10px;color:var(--text);
+    display:flex;align-items:center;gap:8px;
+  }
+  .op-section h2 .badge-sm{
+    font-size:10px;font-weight:800;letter-spacing:.08em;
+    text-transform:uppercase;
+    background:#E8F0FE;color:var(--motion);
+    padding:3px 8px;border-radius:999px;
+  }
+  .op-table{width:100%;border-collapse:collapse;font-size:12.5px}
+  .op-table th{
+    text-align:left;padding:7px 12px;
+    background:#F9F9F9;font-size:10.5px;
+    text-transform:uppercase;color:#888;
+    letter-spacing:.05em;
+    border-bottom:1px solid var(--border);
+    position:sticky;top:0;
+  }
+  .op-table td{padding:7px 12px;border-bottom:1px solid #EEE}
+  .op-table tr:hover td{background:#FAFBFD}
+  .op-tag{
+    display:inline-grid;place-items:center;
+    min-width:32px;padding:3px 8px;border-radius:6px;
+    color:white;font-weight:800;font-size:12px;
+  }
+  .op-tag.arith{background:var(--operators)}
+  .op-tag.comp{background:var(--sensing)}
+  .op-tag.logic{background:var(--looks)}
+  .op-tag.text{background:var(--variables)}
+  code.py-inline{
+    font-family:'JetBrains Mono',monospace;font-size:11.5px;
+    background:#F0F4F8;color:var(--motion);
+    padding:2px 6px;border-radius:4px;font-weight:700;
+  }
+
+  /* Toast */
+  #toast{
+    position:fixed;left:50%;bottom:30px;
+    transform:translate(-50%,20px);
+    background:var(--green-flag);color:white;
+    font-weight:800;font-size:13px;
+    padding:10px 20px;border-radius:8px;
+    box-shadow:0 8px 20px rgba(0,0,0,.2);
+    opacity:0;pointer-events:none;
+    transition:.3s ease;z-index:200;
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+
+  /* Scrollbars */
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#C5C5C5;border-radius:4px}
+  ::-webkit-scrollbar-thumb:hover{background:#A5A5A5}
+
+  @media (max-width:1150px){
+    .scratch-body{grid-template-columns:56px 200px minmax(0,1fr) 340px}
+  }
+  @media (max-width:900px){
+    body{overflow:auto}
+    .scratch-body{grid-template-columns:1fr;height:auto;min-height:0}
+    .cat-col{flex-direction:row;overflow-x:auto;padding:8px}
+    .palette-col{max-height:200px}
+    .coding-area{min-height:400px}
+    .stage-col{min-height:auto}
+    .op-section{max-height:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER SCRATCH -->
+<header class="scratch-header">
+  <div class="logo">
+    <span class="logo-cat">🐱</span>
+    <b>Scratch</b>
+    <span style="opacity:.7">→ Python</span>
+  </div>
+  <nav class="top-menu">
+    <button>Archivo</button>
+    <button>Editar</button>
+    <button>Tutoriales</button>
+  </nav>
+  <span class="top-badge">Traductor de bloques</span>
+</header>
+
+<!-- CUERPO -->
+<div class="scratch-body">
+
+  <!-- COLUMNA CATEGORÍAS -->
+  <aside class="cat-col" id="catCol"></aside>
+
+  <!-- COLUMNA PALETA -->
+  <aside class="palette-col">
+    <div class="palette-header" id="paletteTitle">Eventos</div>
+    <div class="palette-blocks" id="palette"></div>
+  </aside>
+
+  <!-- ÁREA DE CÓDIGO -->
+  <main class="coding-area">
+    <div class="coding-inner" id="workspace"></div>
+  </main>
+
+  <!-- COLUMNA ESCENARIO + PYTHON -->
+  <aside class="stage-col">
+    <div class="stage-controls">
+      <button class="stage-btn flag" title="Ejecutar">🏁</button>
+      <button class="stage-btn stop" title="Detener">⏹</button>
+      <span class="stage-label">Escenario</span>
+    </div>
+    <div class="stage-canvas">
+      <span class="stage-cat">🐱</span>
+      <span class="stage-hint">480 × 360</span>
+    </div>
+    <div class="sprites-panel">
+      <div class="sprite-item active">
+        <div class="sprite-icon">🐱</div>
+        <div class="sprite-name">Sprite1</div>
+      </div>
+      <div class="sprite-item">
+        <div class="sprite-icon">🎨</div>
+        <div class="sprite-name">Escenario</div>
+      </div>
+    </div>
+    <div class="python-panel">
+      <div class="python-header">
+        <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+        <span>scratch_to_python.py</span>
+      </div>
+      <pre class="python-code" id="codeOut"></pre>
+      <button class="copy-btn" id="copyCode">📋 Copiar código Python</button>
+    </div>
+  </aside>
+
+</div>
+
+<!-- TABLA OPERADORES -->
+<section class="op-section">
+  <h2>🔎 Equivalencias de operadores <span class="badge-sm">Bloque ↔ Python</span></h2>
+  <table class="op-table">
+    <thead>
+      <tr><th style="width:90px">Bloque</th><th>Significado</th><th style="width:150px">En Python</th><th>Ejemplo</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="op-tag arith">+</span></td><td>Suma</td><td><code class="py-inline">+</code></td><td><code class="py-inline">a + b</code></td></tr>
+      <tr><td><span class="op-tag arith">-</span></td><td>Resta</td><td><code class="py-inline">-</code></td><td><code class="py-inline">a - b</code></td></tr>
+      <tr><td><span class="op-tag arith">*</span></td><td>Multiplicación</td><td><code class="py-inline">*</code></td><td><code class="py-inline">a * b</code></td></tr>
+      <tr><td><span class="op-tag arith">/</span></td><td>División</td><td><code class="py-inline">/</code></td><td><code class="py-inline">a / b</code></td></tr>
+      <tr><td><span class="op-tag arith">%</span></td><td>Módulo / resto</td><td><code class="py-inline">%</code></td><td><code class="py-inline">a % b</code></td></tr>
+      <tr><td><span class="op-tag comp">=</span></td><td>Igual a</td><td><code class="py-inline">==</code></td><td><code class="py-inline">a == b</code></td></tr>
+      <tr><td><span class="op-tag comp">≠</span></td><td>Distinto de</td><td><code class="py-inline">!=</code></td><td><code class="py-inline">a != b</code></td></tr>
+      <tr><td><span class="op-tag comp">≥</span></td><td>Mayor o igual</td><td><code class="py-inline">&gt;=</code></td><td><code class="py-inline">a &gt;= b</code></td></tr>
+      <tr><td><span class="op-tag comp">≤</span></td><td>Menor o igual</td><td><code class="py-inline">&lt;=</code></td><td><code class="py-inline">a &lt;= b</code></td></tr>
+      <tr><td><span class="op-tag logic">y</span></td><td>Y lógico</td><td><code class="py-inline">and</code></td><td><code class="py-inline">a and b</code></td></tr>
+      <tr><td><span class="op-tag logic">o</span></td><td>O lógico</td><td><code class="py-inline">or</code></td><td><code class="py-inline">a or b</code></td></tr>
+      <tr><td><span class="op-tag logic">no</span></td><td>Negación</td><td><code class="py-inline">not</code></td><td><code class="py-inline">not a</code></td></tr>
+      <tr><td><span class="op-tag text">unir</span></td><td>Unir textos</td><td><code class="py-inline">str(a) + str(b)</code></td><td><code class="py-inline">unir(a, b)</code></td></tr>
+      <tr><td><span class="op-tag text">longitud</span></td><td>Longitud de texto</td><td><code class="py-inline">len()</code></td><td><code class="py-inline">longitud(a)</code></td></tr>
+      <tr><td><span class="op-tag text">letra</span></td><td>Letra n.º</td><td><code class="py-inline">texto[i]</code></td><td><code class="py-inline">letra(n, texto)</code></td></tr>
+      <tr><td><span class="op-tag arith">redondear</span></td><td>Redondear</td><td><code class="py-inline">round()</code></td><td><code class="py-inline">redondear(n)</code></td></tr>
+      <tr><td><span class="op-tag arith">aleatorio</span></td><td>Número aleatorio</td><td><code class="py-inline">random.randint()</code></td><td><code class="py-inline">aleatorio(a, b)</code></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<div id="toast">Copiado</div>
+
+<script>
+/* ═════════════════════════════════════════════════════════════
+   CATEGORÍAS Y METADATOS DE BLOQUES
+   ═════════════════════════════════════════════════════════════ */
+const CATEGORIES = [
+  { id:'events',    label:'Eventos',    color:'#FFBF00', icon:'🏁' },
+  { id:'motion',    label:'Movimiento', color:'#4C97FF', icon:'➡️' },
+  { id:'looks',     label:'Apariencia', color:'#9966FF', icon:'👁️' },
+  { id:'control',   label:'Control',    color:'#FFAB19', icon:'🔁' },
+  { id:'variables', label:'Variables',  color:'#FF8C1A', icon:'📊' },
+  { id:'sensing',   label:'Sensores',   color:'#5CB1D6', icon:'🔍' }
+];
+
+const BLOCKS = {
+  when_flag:    { cat:'events',    icon:'🏁', label:'al presionar bandera verde', hat:true, container:true },
+  move:         { cat:'motion',    icon:'➡️', label:'mover {steps} pasos' },
+  turn_right:   { cat:'motion',    icon:'↻',  label:'girar derecha {degrees} grados' },
+  turn_left:    { cat:'motion',    icon:'↺',  label:'girar izquierda {degrees} grados' },
+  goto_xy:      { cat:'motion',    icon:'🎯', label:'ir a x:{x} y:{y}' },
+  change_x:     { cat:'motion',    icon:'↔️', label:'cambiar x por {value}' },
+  change_y:     { cat:'motion',    icon:'↕️', label:'cambiar y por {value}' },
+  set_x:        { cat:'motion',    icon:'📍', label:'fijar x a {value}' },
+  set_y:        { cat:'motion',    icon:'📍', label:'fijar y a {value}' },
+  point_dir:    { cat:'motion',    icon:'🧭', label:'apuntar en dirección {value}' },
+  bounce:       { cat:'motion',    icon:'🏓', label:'rebotar si toca borde' },
+  say:          { cat:'looks',     icon:'💬', label:'decir {msg}' },
+  think:        { cat:'looks',     icon:'💭', label:'pensar {msg}' },
+  change_size:  { cat:'looks',     icon:'🔍', label:'cambiar tamaño por {value}' },
+  set_size:     { cat:'looks',     icon:'🔎', label:'fijar tamaño a {value}' },
+  show:         { cat:'looks',     icon:'👁️', label:'mostrar' },
+  hide:         { cat:'looks',     icon:'🙈', label:'ocultar' },
+  wait:         { cat:'control',   icon:'⏱️', label:'esperar {secs} segundos' },
+  repeat:       { cat:'control',   icon:'🔁', label:'repetir {times} veces', container:true },
+  forever:      { cat:'control',   icon:'♾️', label:'por siempre', container:true },
+  if:           { cat:'control',   icon:'❓', label:'si… entonces', container:true },
+  if_else:      { cat:'control',   icon:'❓', label:'si… entonces / sino', container:true },
+  stop:         { cat:'control',   icon:'⏹️', label:'detener todo' },
+  set_var:      { cat:'variables', icon:'📦', label:'fijar {name} a {value}' },
+  change_var:   { cat:'variables', icon:'➕', label:'cambiar {name} por {value}' },
+  show_var:     { cat:'variables', icon:'📊', label:'mostrar variable {name}' },
+  hide_var:     { cat:'variables', icon:'📉', label:'ocultar variable {name}' },
+  ask:          { cat:'sensing',   icon:'❔', label:'preguntar {question} y esperar' }
+};
+
+const CONTAINERS = new Set(['when_flag','repeat','forever','if','if_else']);
+
+/* ═════════════════════════════════════════════════════════════
+   ESTADO
+   ═════════════════════════════════════════════════════════════ */
+const state = {
+  blocks: [],
+  activeTarget: null,
+  nextId: 1,
+  activeCategory: 'events'
+};
+
+let exprSeq = 1;
+let exprMap = new Map();
+
+const esc = s => String(s ?? '')
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+const PY_KEYWORDS = new Set(['False','None','True','and','as','assert','async','await','break','class','continue','def','del','elif','else','except','finally','for','from','global','if','import','in','is','lambda','nonlocal','not','or','pass','raise','return','try','while','with','yield']);
+
+function pyVar(name){
+  let n = String(name ?? '').trim().replace(/\s+/g,'_').replace(/[^\w]/g,'_');
+  if(!n) n = 'variable';
+  if(/^\d/.test(n)) n = 'v_' + n;
+  if(PY_KEYWORDS.has(n)) n += '_';
+  return n;
+}
+function pyString(s){ return JSON.stringify(String(s ?? '')); }
+
+/* ═════════════════════════════════════════════════════════════
+   EXPRESIONES
+   ═════════════════════════════════════════════════════════════ */
+function lit(v='0'){ return { kind:'lit', value:String(v) }; }
+function makeOp(op, a=lit('0'), b=lit('0')){ return { kind:'op', op, a, b }; }
+function ensureExprId(e){
+  if(!e._id) e._id = 'e' + (exprSeq++);
+  exprMap.set(e._id, e);
+  return e._id;
+}
+function isUnary(op){ return ['no','longitud','redondear'].includes(op); }
+
+function exprToPython(e){
+  if(!e) return '0';
+  if(e.kind === 'lit'){
+    const s = String(e.value ?? '').trim();
+    if(s === '') return '0';
+    if(/^-?\d+(\.\d+)?$/.test(s)) return s;
+    if(/^(['"]).*\1$/.test(s)) return s;
+    return pyVar(s);
+  }
+  const a = exprToPython(e.a);
+  if(e.op === 'no')        return `(not ${a})`;
+  if(e.op === 'longitud')  return `longitud(${a})`;
+  if(e.op === 'redondear') return `redondear(${a})`;
+  const b = exprToPython(e.b);
+  switch(e.op){
+    case '+': return `(${a} + ${b})`;
+    case '-': return `(${a} - ${b})`;
+    case '*': return `(${a} * ${b})`;
+    case '/': return `(${a} / ${b})`;
+    case '%': return `(${a} % ${b})`;
+    case '=': return `(${a} == ${b})`;
+    case '≠': return `(${a} != ${b})`;
+    case '>': return `(${a} > ${b})`;
+    case '<': return `(${a} < ${b})`;
+    case '≥': return `(${a} >= ${b})`;
+    case '≤': return `(${a} <= ${b})`;
+    case 'y': return `(${a} and ${b})`;
+    case 'o': return `(${a} or ${b})`;
+    case 'unir': return `unir(${a}, ${b})`;
+    case 'letra': return `letra(${a}, ${b})`;
+    case 'aleatorio': return `aleatorio(${a}, ${b})`;
+    default: return `(${a} ${e.op} ${b})`;
+  }
+}
+
+const EXPR_OPS = [
+  { v:'+', label:'+', cat:'arith' },
+  { v:'-', label:'-', cat:'arith' },
+  { v:'*', label:'*', cat:'arith' },
+  { v:'/', label:'/', cat:'arith' },
+  { v:'%', label:'% módulo', cat:'arith' },
+  { v:'=', label:'= igual', cat:'comp' },
+  { v:'≠', label:'≠ distinto', cat:'comp' },
+  { v:'>', label:'>', cat:'comp' },
+  { v:'<', label:'<', cat:'comp' },
+  { v:'≥', label:'≥', cat:'comp' },
+  { v:'≤', label:'≤', cat:'comp' },
+  { v:'y', label:'y and', cat:'logic' },
+  { v:'o', label:'o or', cat:'logic' },
+  { v:'no', label:'no not', cat:'logic', unary:true },
+  { v:'unir', label:'unir', cat:'text' },
+  { v:'letra', label:'letra n.º', cat:'text' },
+  { v:'longitud', label:'longitud', cat:'text', unary:true },
+  { v:'redondear', label:'redondear', cat:'arith', unary:true },
+  { v:'aleatorio', label:'aleatorio', cat:'arith' }
+];
+
+function opOptionsExpr(current){
+  return [
+    { label:'Aritméticos', cat:'arith' },
+    { label:'Comparación', cat:'comp' },
+    { label:'Lógicos', cat:'logic' },
+    { label:'Texto', cat:'text' }
+  ].map(g => {
+    const items = EXPR_OPS.filter(o => o.cat === g.cat).map(o => {
+      const sel = o.v === current ? ' selected' : '';
+      return `<option value="${esc(o.v)}"${sel}>${esc(o.label)}</option>`;
+    }).join('');
+    return `<optgroup label="${g.label}">${items}</optgroup>`;
+  }).join('');
+}
+
+function renderExpr(e){
+  if(!e) e = lit('0');
+  const id = ensureExprId(e);
+  if(e.kind === 'lit'){
+    return `<span class="expr-lit">
+      <input class="ws-input expr" data-expr-id="${id}" value="${esc(e.value)}" spellcheck="false">
+      <button class="mini-btn" data-convert="${id}" title="Convertir en operador">ƒ</button>
+    </span>`;
+  }
+  const unary = isUnary(e.op);
+  return `<span class="expr-op">
+    <select class="opsel" data-expr-op="${id}">${opOptionsExpr(e.op)}</select>
+    ${renderExpr(e.a)}
+    ${unary ? '' : renderExpr(e.b)}
+    <button class="mini-btn danger" data-collapse="${id}" title="Volver a valor simple">×</button>
+  </span>`;
+}
+
+/* ═════════════════════════════════════════════════════════════
+   CREACIÓN DE BLOQUES
+   ═════════════════════════════════════════════════════════════ */
+function createBlock(type){
+  const b = { id: state.nextId++, type, fields:{}, children:[], elseChildren:[] };
+  switch(type){
+    case 'when_flag': break;
+    case 'move': b.fields.steps = lit('10'); break;
+    case 'turn_right': case 'turn_left': b.fields.degrees = lit('15'); break;
+    case 'goto_xy': b.fields.x = lit('0'); b.fields.y = lit('0'); break;
+    case 'change_x': case 'change_y': b.fields.value = lit('10'); break;
+    case 'set_x': case 'set_y': b.fields.value = lit('0'); break;
+    case 'point_dir': b.fields.value = lit('90'); break;
+    case 'say': case 'think': b.fields.msg = '¡Hola!'; break;
+    case 'change_size': b.fields.value = lit('10'); break;
+    case 'set_size': b.fields.value = lit('100'); break;
+    case 'wait': b.fields.secs = lit('1'); break;
+    case 'repeat': b.fields.times = lit('10'); break;
+    case 'if': case 'if_else': b.fields.cond = makeOp('>', lit('1'), lit('0')); break;
+    case 'set_var': b.fields.name = 'puntos'; b.fields.value = lit('0'); break;
+    case 'change_var': b.fields.name = 'puntos'; b.fields.value = lit('1'); break;
+    case 'show_var': case 'hide_var': b.fields.name = 'puntos'; break;
+    case 'ask': b.fields.question = '¿Cómo te llamas?'; break;
+  }
+  return b;
+}
+
+/* ═════════════════════════════════════════════════════════════
+   BÚSQUEDA E INSERCIÓN
+   ═════════════════════════════════════════════════════════════ */
+function findBlock(id, arr = state.blocks){
+  for(const b of arr){
+    if(b.id === id) return b;
+    const r = findBlock(id, b.children) || findBlock(id, b.elseChildren);
+    if(r) return r;
+  }
+  return null;
+}
+function findLocation(id, arr = state.blocks){
+  for(let i = 0; i < arr.length; i++){
+    if(arr[i].id === id) return { arr, i };
+    const r = findLocation(id, arr[i].children) || findLocation(id, arr[i].elseChildren);
+    if(r) return r;
+  }
+  return null;
+}
+
+function addBlock(type){
+  const b = createBlock(type);
+  let target = state.activeTarget;
+  if(type === 'when_flag') target = null;
+  if(target && target.blockId){
+    const parent = findBlock(target.blockId);
+    if(parent){
+      const arr = target.branch === 'elseChildren' ? parent.elseChildren : parent.children;
+      arr.push(b);
+    } else {
+      state.blocks.push(b);
+      state.activeTarget = null;
+    }
+  } else {
+    state.blocks.push(b);
+  }
+  if(CONTAINERS.has(type)){
+    state.activeTarget = { blockId: b.id, branch: 'children' };
+  }
+  renderWorkspace();
+  renderCode();
+}
+
+/* ═════════════════════════════════════════════════════════════
+   RENDER DE LA PALETA (dinámico por categoría)
+   ═════════════════════════════════════════════════════════════ */
+const catCol = document.getElementById('catCol');
+const palette = document.getElementById('palette');
+const paletteTitle = document.getElementById('paletteTitle');
+
+function renderCategories(){
+  catCol.innerHTML = CATEGORIES.map(c => `
+    <button class="cat-tab ${c.id === state.activeCategory ? 'active' : ''}"
+            data-cat="${c.id}" title="${c.label}"
+            style="--cat-color:${c.color}">${c.icon}</button>
+  `).join('');
+}
+
+function renderPalette(){
+  const cat = CATEGORIES.find(c => c.id === state.activeCategory);
+  paletteTitle.textContent = cat.label;
+  const blocks = Object.entries(BLOCKS).filter(([_, m]) => m.cat === state.activeCategory);
+  palette.innerHTML = blocks.map(([type, meta]) => {
+    const label = meta.label.replace(/\{\w+\}/g, '…');
+    return `<div class="pal-block ${meta.hat ? 'hat' : ''}"
+                data-add="${type}"
+                style="--cat-color:${cat.color}">
+      <span class="pal-ic">${meta.icon}</span>
+      <span>${esc(label)}</span>
+    </div>`;
+  }).join('');
+}
+
+catCol.addEventListener('click', e => {
+  const btn = e.target.closest('[data-cat]');
+  if(!btn) return;
+  state.activeCategory = btn.dataset.cat;
+  renderCategories();
+  renderPalette();
+});
+
+palette.addEventListener('click', e => {
+  const blk = e.target.closest('[data-add]');
+  if(!blk) return;
+  addBlock(blk.dataset.add);
+});
+
+/* ═════════════════════════════════════════════════════════════
+   RENDER DE BLOQUES EN EL ÁREA DE CÓDIGO
+   ═════════════════════════════════════════════════════════════ */
+function actionsHTML(b){
+  return `<span class="ws-block-actions">
+    <button data-action="up" data-id="${b.id}" title="Subir">▲</button>
+    <button data-action="down" data-id="${b.id}" title="Bajar">▼</button>
+    <button data-action="del" data-id="${b.id}" title="Eliminar">✕</button>
+  </span>`;
+}
+function textField(b, field, cls=''){
+  return `<input class="ws-input ${cls}" data-block-id="${b.id}" data-field="${field}"
+    value="${esc(b.fields[field] ?? '')}" spellcheck="false">`;
+}
+function renderStack(children, parentId, branch){
+  const active = parentId
+    ? (state.activeTarget && state.activeTarget.blockId === parentId && state.activeTarget.branch === branch)
+    : state.activeTarget === null;
+  return `<div class="ws-stack ${active ? 'active' : ''}">
+    ${children.map(renderBlock).join('')}
+    <button class="add-inside" data-target-block="${parentId ?? ''}" data-target-branch="${branch}">＋ añadir aquí</button>
+  </div>`;
+}
+
+function renderBlock(b){
+  const meta = BLOCKS[b.type];
+  if(!meta) return '';
+  const A = actionsHTML(b);
+  const cat = CATEGORIES.find(c => c.id === meta.cat);
+  const L = t => `<span>${t}</span>`;
+
+  switch(b.type){
+    case 'when_flag':
+      return `<div class="ws-block hat" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('🏁 al presionar bandera verde')}${A}</div>
+        ${renderStack(b.children, b.id, 'children')}
+      </div>`;
+    case 'move':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('mover')}${renderExpr(b.fields.steps)}${L('pasos')}${A}</div>
+      </div>`;
+    case 'turn_right':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('girar derecha')}${renderExpr(b.fields.degrees)}${L('grados')}${A}</div>
+      </div>`;
+    case 'turn_left':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('girar izquierda')}${renderExpr(b.fields.degrees)}${L('grados')}${A}</div>
+      </div>`;
+    case 'goto_xy':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('ir a x:')}${renderExpr(b.fields.x)}${L('y:')}${renderExpr(b.fields.y)}${A}</div>
+      </div>`;
+    case 'change_x':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('cambiar x por')}${renderExpr(b.fields.value)}${A}</div>
+      </div>`;
+    case 'change_y':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('cambiar y por')}${renderExpr(b.fields.value)}${A}</div>
+      </div>`;
+    case 'set_x':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('fijar x a')}${renderExpr(b.fields.value)}${A}</div>
+      </div>`;
+    case 'set_y':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('fijar y a')}${renderExpr(b.fields.value)}${A}</div>
+      </div>`;
+    case 'point_dir':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('apuntar en dirección')}${renderExpr(b.fields.value)}${A}</div>
+      </div>`;
+    case 'bounce':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('rebotar si toca borde')}${A}</div>
+      </div>`;
+    case 'say':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('decir')}${textField(b,'msg','msg')}${A}</div>
+      </div>`;
+    case 'think':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('pensar')}${textField(b,'msg','msg')}${A}</div>
+      </div>`;
+    case 'change_size':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('cambiar tamaño por')}${renderExpr(b.fields.value)}${A}</div>
+      </div>`;
+    case 'set_size':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('fijar tamaño a')}${renderExpr(b.fields.value)}${A}</div>
+      </div>`;
+    case 'show':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('mostrar')}${A}</div>
+      </div>`;
+    case 'hide':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('ocultar')}${A}</div>
+      </div>`;
+    case 'wait':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('esperar')}${renderExpr(b.fields.secs)}${L('segundos')}${A}</div>
+      </div>`;
+    case 'repeat':
+      return `<div class="ws-block c-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('repetir')}${renderExpr(b.fields.times)}${L('veces')}${A}</div>
+        ${renderStack(b.children, b.id, 'children')}
+      </div>`;
+    case 'forever':
+      return `<div class="ws-block c-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('por siempre')}${A}</div>
+        ${renderStack(b.children, b.id, 'children')}
+      </div>`;
+    case 'if':
+      return `<div class="ws-block c-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('si')}${renderExpr(b.fields.cond)}${L('entonces')}${A}</div>
+        ${renderStack(b.children, b.id, 'children')}
+      </div>`;
+    case 'if_else':
+      return `<div class="ws-block c-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('si')}${renderExpr(b.fields.cond)}${L('entonces')}${A}</div>
+        ${renderStack(b.children, b.id, 'children')}
+        <div class="else-label">sino</div>
+        ${renderStack(b.elseChildren, b.id, 'elseChildren')}
+      </div>`;
+    case 'stop':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('detener todo')}${A}</div>
+      </div>`;
+    case 'set_var':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('fijar')}${textField(b,'name','var')}${L('a')}${renderExpr(b.fields.value)}${A}</div>
+      </div>`;
+    case 'change_var':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('cambiar')}${textField(b,'name','var')}${L('por')}${renderExpr(b.fields.value)}${A}</div>
+      </div>`;
+    case 'show_var':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('mostrar variable')}${textField(b,'name','var')}${A}</div>
+      </div>`;
+    case 'hide_var':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('ocultar variable')}${textField(b,'name','var')}${A}</div>
+      </div>`;
+    case 'ask':
+      return `<div class="ws-block" style="--cat-color:${cat.color}" data-block-id="${b.id}">
+        <div class="row">${L('preguntar')}${textField(b,'question','msg')}${L('y esperar')}${A}</div>
+      </div>`;
+  }
+  return '';
+}
+
+/* ═════════════════════════════════════════════════════════════
+   GENERACIÓN DE PYTHON
+   ═════════════════════════════════════════════════════════════ */
+const PRELUDE = `# ---- Runtime mínimo tipo Scratch ----
+import time, random, math
+
+x = 0
+y = 0
+direccion = 90
+tamano = 100
+visible = True
+respuesta = ""
+
+def avanzar(pasos):
+    global x, y
+    x += pasos * math.cos(math.radians(direccion))
+    y += pasos * math.sin(math.radians(direccion))
+
+def girar(grados):
+    global direccion
+    direccion = (direccion + grados) % 360
+
+def ir_a(nx, ny):
+    global x, y
+    x, y = nx, ny
+
+def rebotar():
+    global x, y, direccion
+    if x < -240 or x > 240:
+        direccion = 180 - direccion
+    if y < -180 or y > 180:
+        direccion = -direccion
+
+def decir(msg):
+    print(msg)
+
+def pensar(msg):
+    print(f"[piensa] {msg}")
+
+def mostrar():
+    global visible
+    visible = True
+
+def ocultar():
+    global visible
+    visible = False
+
+def detener():
+    raise SystemExit
+
+def aleatorio(a, b):
+    return random.randint(int(a), int(b))
+
+def unir(a, b):
+    return str(a) + str(b)
+
+def letra(indice, texto):
+    texto = str(texto)
+    i = int(indice) - 1
+    return texto[i] if 0 <= i < len(texto) else ""
+
+def longitud(texto):
+    return len(str(texto))
+
+def redondear(n):
+    return round(n)
+
+def mostrar_variable(nombre, valor):
+    print(f"{nombre} = {valor}")
+
+def ocultar_variable(nombre):
+    pass`;
+
+function translateStack(children, indent){
+  return children.map(b => translateBlock(b, indent)).filter(Boolean).join('\n');
+}
+function translateBlock(b, indent){
+  const pad = ' '.repeat(indent);
+  switch(b.type){
+    case 'when_flag': return translateStack(b.children, indent);
+    case 'move': return `${pad}avanzar(${exprToPython(b.fields.steps)})`;
+    case 'turn_right': return `${pad}girar(${exprToPython(b.fields.degrees)})`;
+    case 'turn_left': return `${pad}girar(-(${exprToPython(b.fields.degrees)}))`;
+    case 'goto_xy': return `${pad}ir_a(${exprToPython(b.fields.x)}, ${exprToPython(b.fields.y)})`;
+    case 'change_x': return `${pad}x += ${exprToPython(b.fields.value)}`;
+    case 'change_y': return `${pad}y += ${exprToPython(b.fields.value)}`;
+    case 'set_x': return `${pad}x = ${exprToPython(b.fields.value)}`;
+    case 'set_y': return `${pad}y = ${exprToPython(b.fields.value)}`;
+    case 'point_dir': return `${pad}direccion = ${exprToPython(b.fields.value)}`;
+    case 'bounce': return `${pad}rebotar()`;
+    case 'say': return `${pad}decir(${pyString(b.fields.msg)})`;
+    case 'think': return `${pad}pensar(${pyString(b.fields.msg)})`;
+    case 'change_size': return `${pad}tamano += ${exprToPython(b.fields.value)}`;
+    case 'set_size': return `${pad}tamano = ${exprToPython(b.fields.value)}`;
+    case 'show': return `${pad}mostrar()`;
+    case 'hide': return `${pad}ocultar()`;
+    case 'wait': return `${pad}time.sleep(${exprToPython(b.fields.secs)})`;
+    case 'repeat': {
+      const body = translateStack(b.children, indent + 4);
+      return `${pad}for _ in range(int(${exprToPython(b.fields.times)})):\n${body || pad + '    pass'}`;
+    }
+    case 'forever': {
+      const body = translateStack(b.children, indent + 4);
+      return `${pad}while True:\n${body || pad + '    pass'}`;
+    }
+    case 'if': {
+      const body = translateStack(b.children, indent + 4);
+      return `${pad}if ${exprToPython(b.fields.cond)}:\n${body || pad + '    pass'}`;
+    }
+    case 'if_else': {
+      const body = translateStack(b.children, indent + 4);
+      const elseBody = translateStack(b.elseChildren, indent + 4);
+      return `${pad}if ${exprToPython(b.fields.cond)}:\n${body || pad + '    pass'}\n${pad}else:\n${elseBody || pad + '    pass'}`;
+    }
+    case 'stop': return `${pad}detener()`;
+    case 'set_var': return `${pad}${pyVar(b.fields.name)} = ${exprToPython(b.fields.value)}`;
+    case 'change_var': return `${pad}${pyVar(b.fields.name)} += ${exprToPython(b.fields.value)}`;
+    case 'show_var': return `${pad}mostrar_variable(${pyString(b.fields.name)}, ${pyVar(b.fields.name)})`;
+    case 'hide_var': return `${pad}ocultar_variable(${pyString(b.fields.name)})`;
+    case 'ask': return `${pad}respuesta = input(${pyString(b.fields.question)})`;
+  }
+  return '';
+}
+
+function generateCode(){
+  if(!state.blocks.length){
+    return '# Añade bloques desde la paleta para generar código Python.\n# Ejemplo: al presionar bandera verde → fijar variable → repetir → decir';
+  }
+  const parts = [PRELUDE];
+  let hasMain = false;
+  for(const b of state.blocks){
+    if(b.type === 'when_flag'){
+      const name = hasMain ? `evento_${b.id}` : 'main';
+      hasMain = true;
+      const body = translateStack(b.children, 4);
+      parts.push(`def ${name}():\n${body || '    pass'}`);
+    } else {
+      parts.push(translateBlock(b, 0));
+    }
+  }
+  if(hasMain) parts.push('if __name__ == "__main__":\n    main()');
+  return parts.filter(Boolean).join('\n\n');
+}
+
+/* ═════════════════════════════════════════════════════════════
+   RENDER GENERAL
+   ═════════════════════════════════════════════════════════════ */
+const workspace = document.getElementById('workspace');
+const codeOut = document.getElementById('codeOut');
+
+function countBlocks(arr = state.blocks){
+  return arr.reduce((n, b) => n + 1 + countBlocks(b.children) + countBlocks(b.elseChildren), 0);
+}
+
+function renderWorkspace(){
+  exprMap = new Map();
+  if(!state.blocks.length){
+    workspace.innerHTML = `<div class="empty-ws">
+      <div class="icon">🧩</div>
+      <p>Arrastra o haz clic en los bloques de la paleta para empezar.</p>
+    </div>`;
+    return;
+  }
+  workspace.innerHTML = renderStack(state.blocks, null, 'children');
+}
+
+function highlight(code){
+  let html = esc(code);
+  html = html.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g, '<span class="py-str">$1</span>');
+  html = html.replace(/\b(if|elif|else|for|in|while|range|print|input|int|float|round|and|or|not|True|False|def|return|import|from|global|pass|raise|SystemExit)\b/g, '<span class="py-kw">$1</span>');
+  html = html.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="py-num">$1</span>');
+  return html;
+}
+function renderCode(){
+  codeOut.innerHTML = highlight(generateCode());
+}
+
+/* ═════════════════════════════════════════════════════════════
+   EVENTOS
+   ═════════════════════════════════════════════════════════════ */
+workspace.addEventListener('click', e => {
+  const addBtn = e.target.closest('.add-inside');
+  if(addBtn){
+    const pid = addBtn.dataset.targetBlock;
+    const branch = addBtn.dataset.targetBranch || 'children';
+    state.activeTarget = pid ? { blockId: Number(pid), branch } : null;
+    renderWorkspace();
+    return;
+  }
+  const actBtn = e.target.closest('button[data-action]');
+  if(actBtn){
+    const loc = findLocation(Number(actBtn.dataset.id));
+    if(!loc) return;
+    const act = actBtn.dataset.action;
+    if(act === 'del'){
+      loc.arr.splice(loc.i, 1);
+      if(state.activeTarget && !findBlock(state.activeTarget.blockId)) state.activeTarget = null;
+    }
+    if(act === 'up' && loc.i > 0)
+      [loc.arr[loc.i-1], loc.arr[loc.i]] = [loc.arr[loc.i], loc.arr[loc.i-1]];
+    if(act === 'down' && loc.i < loc.arr.length - 1)
+      [loc.arr[loc.i+1], loc.arr[loc.i]] = [loc.arr[loc.i], loc.arr[loc.i+1]];
+    renderWorkspace(); renderCode();
+    return;
+  }
+  const conv = e.target.closest('[data-convert]');
+  if(conv){
+    const node = exprMap.get(conv.dataset.convert);
+    if(node && node.kind === 'lit'){
+      const old = { kind:'lit', value:node.value };
+      node.kind = 'op'; node.op = '+'; node.a = old; node.b = lit('0');
+      renderWorkspace(); renderCode();
+    }
+    return;
+  }
+  const coll = e.target.closest('[data-collapse]');
+  if(coll){
+    const node = exprMap.get(coll.dataset.collapse);
+    if(node && node.kind === 'op'){
+      const val = (node.a && node.a.kind === 'lit') ? node.a.value : '0';
+      node.kind = 'lit'; node.value = val;
+      delete node.op; delete node.a; delete node.b;
+      renderWorkspace(); renderCode();
+    }
+  }
+});
+
+workspace.addEventListener('change', e => {
+  const sel = e.target.closest('[data-expr-op]');
+  if(!sel) return;
+  const node = exprMap.get(sel.dataset.exprOp);
+  if(!node) return;
+  node.op = sel.value;
+  renderWorkspace(); renderCode();
+});
+
+workspace.addEventListener('input', e => {
+  const exprInput = e.target.closest('[data-expr-id]');
+  if(exprInput){
+    const node = exprMap.get(exprInput.dataset.exprId);
+    if(node && node.kind === 'lit'){
+      node.value = exprInput.value;
+      renderCode();
+    }
+    return;
+  }
+  const fld = e.target.closest('[data-block-id][data-field]');
+  if(fld){
+    const b = findBlock(Number(fld.dataset.blockId));
+    if(b){
+      b.fields[fld.dataset.field] = fld.value;
+      renderCode();
+    }
+  }
+});
+
+/* Copiar código */
+const toast = document.getElementById('toast');
+let toastTimer;
+function showToast(msg){
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+document.getElementById('copyCode').addEventListener('click', async () => {
+  const code = generateCode();
+  try {
+    await navigator.clipboard.writeText(code);
+    showToast('📋 Código Python copiado');
+  } catch(err){
+    const ta = document.createElement('textarea');
+    ta.value = code;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+    showToast('📋 Código Python copiado');
+  }
+});
+
+/* ═════════════════════════════════════════════════════════════
+   PROYECTO DE EJEMPLO
+   ═════════════════════════════════════════════════════════════ */
+function loadSample(){
+  const hat = createBlock('when_flag');
+  const set = createBlock('set_var');
+  set.fields.name = 'puntos'; set.fields.value = lit('0');
+  const rep = createBlock('repeat');
+  rep.fields.times = lit('3');
+  const ch = createBlock('change_var');
+  ch.fields.name = 'puntos'; ch.fields.value = lit('1');
+  const move = createBlock('move');
+  move.fields.steps = lit('10');
+  const turn = createBlock('turn_right');
+  turn.fields.degrees = lit('15');
+  rep.children.push(ch, move, turn);
+  const iff = createBlock('if_else');
+  iff.fields.cond = makeOp('>', lit('puntos'), lit('2'));
+  const say1 = createBlock('say'); say1.fields.msg = '¡Meta alcanzada!';
+  const say2 = createBlock('say'); say2.fields.msg = 'Sigue intentando';
+  iff.children.push(say1);
+  iff.elseChildren.push(say2);
+  hat.children.push(set, rep, iff);
+  state.blocks.push(hat);
+}
+
+renderCategories();
+renderPalette();
+loadSample();
+renderWorkspace();
+renderCode();
+</script>
+</body>
+</html>
